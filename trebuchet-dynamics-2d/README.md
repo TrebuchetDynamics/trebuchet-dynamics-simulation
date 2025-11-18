@@ -1,251 +1,137 @@
-Trebuchet Dynamics SimulatorTrebuchet Dynamics Limited 
-Pioneering Physics Simulations for Web & Mobile 
-Developed by Trebuchet Dynamics Limited – Showcasing cutting-edge Godot 4 expertise in real-time 2D physics, responsive UI, and seamless cross-platform deployment. OverviewTrebuchet Dynamics Simulator is an interactive 2D physics demonstration built in Godot 4.x. Users tweak trebuchet parameters via sliders, preview trajectories, launch projectiles at destructible castles, and compete for high scores. Perfect for showcasing software skills: Real-time Godot Bullet/Jolt physics (joints, impulses, collisions). 
-Live trajectory prediction (manual physics sim). 
-Polished UI/UX (mobile-friendly sliders, scoring). 
-Cross-platform: Instant Web/HTML5 export; one-click Android APK. 
-Educational: Transparent physics math with tuning table.
+# Trebuchet Dynamics Simulator
 
-Deploy to your website (itch.io/Netlify) or Google Play to impress clients/recruiters. Build time: 1-2 hours from this README. Features5 Sliders: Counterweight mass (50-2000kg), Projectile mass (1-100kg), Arm length (4-12m), Draw angle (30-120°), Wind force (-20 to +20 m/s). 
-Trajectory Preview: Dotted Line2D predicts landing (100 steps, collision-aware). 
-Destructible Castle: Stack of RigidBody2D bricks – score by destruction count. 
-Scoring: Distance + destructions; local high score persistence. 
-Effects: Particles (impact/dust), sounds (launch/boom), projectile trail. 
-Polish: Parallax background, camera tween on launch, auto-reset. 
-Mobile-Optimized: Touch controls, fullscreen UI, 60FPS on low-end devices.
+Built by **Trebuchet Dynamics Limited**, this project is a polished Godot 4.x showcase for real-time 2D physics, responsive UI, and seamless deployment to web and mobile. It is intentionally scoped so that a single developer can stand up the full experience in about an hour and then ship it directly to itch.io, Netlify, or Google Play.
 
- Physics PrinciplesPowered by conservation of energy & momentum. Transparent math:Stored Energy: E=mcw⋅g⋅hE = m_{cw} \cdot g \cdot hE = m_{cw} \cdot g \cdot h
- where h=shortlen⋅(1−cos⁡(θ))h = short_{len} \cdot (1 - \cos(\theta))h = short_{len} \cdot (1 - \cos(\theta))
-, θ=drawangle\theta = draw_{angle}\theta = draw_{angle}
-. 
- Derivation: Counter drops height ( h ) on release → rotational KE. 
-Tip Velocity: vtip≈2E/I⋅longlenv_{tip} \approx \sqrt{2 E / I} \cdot long_{len}v_{tip} \approx \sqrt{2 E / I} \cdot long_{len}
- (I=inertia). Godot simulates exactly. 
-Range: R≈v2sin⁡(2ϕ)gR \approx \frac{v^2 \sin(2\phi)}{g}R \approx \frac{v^2 \sin(2\phi)}{g}
- (ϕ≈45∘\phi \approx 45^\circ\phi \approx 45^\circ
- optimal).
+## Why It Impresses
+- Real-time Jolt/Bullet physics: hinged arm, PinJoint sling, impulses, collisions.
+- Live trajectory prediction: manual Euler integration renders the dotted landing forecast.
+- Polished UX: mobile-friendly sliders, local high score persistence, slick VFX/SFX.
+- Cross-platform: HTML5 build in one click, Android APK in minutes.
+- Educational angle: sliders expose transparent physics math for recruiters/clients.
 
-Parameter
-Effect
-Optimal
-Counter Mass ↑
-Range √m boost
-500-1000kg
-Proj Mass ↓
-Less energy loss
-10-50kg
-Arm Ratio 1:4-6
-Max transfer
-Short=20% total
-Release ~20°
-45° proj angle
-Auto-tuned
-Wind
-Lateral drift
-Tune for challenge
+## Feature Overview
+| Control | Range | Notes |
+| --- | --- | --- |
+| Counterweight Mass | 50 – 2000 kg | Heavier counter → more energy. Primary slider. |
+| Projectile Mass | 1 – 100 kg | Lighter payload keeps arm velocity high. |
+| Arm Length | 4 – 12 m | Automatically keeps 20% short arm ratio for best transfer. |
+| Draw Angle | 30° – 120° | Sets preload height via hinge limits. |
+| Wind Force | -20 – +20 m/s | Horizontal force applied while projectile is airborne. |
 
-Accuracy: Matches real trebuchets (90% efficiency via sling boost). How to PlayTweak sliders → Watch live preview/range estimate. 
-FIRE! → Arm swings, auto-releases at peak velocity. 
-Smash castle → Score = distance + bricks hit. Beat high score! 
-Auto-reset for next shot.
+Additional gameplay polish:
+- Destructible castle made of RigidBody2D bricks; each hit increments score.
+- TrajectoryLine renders a 100-step prediction in screen space.
+- GPUParticles2D for dust/trails, launch and impact audio cues, camera tween-on-launch.
+- Scoreboard UI: Distance + castle hits; stores a local high score via `user://` config.
 
- Quick Start (Godot 4.3+)Download Godot 4.3+. 
-New Project → Import this README's code/scene. 
-F5 → Play!
+## Physics Cheat Sheet
+```
+E = m_cw * g * h, where h = short_len * (1 - cos(theta))
+v_tip ≈ sqrt(2E / I) * long_len
+Range ≈ (v^2 * sin(2 * phi)) / g  (phi ≈ 45° ideal)
+```
+Key takeaways:
+- Heavier counterweights boost range roughly with √m.
+- Keep projectile mass low unless you want satisfying impacts.
+- Arm ratio of 1:4–1:6 and a ~20° release point deliver the best transfer.
+- Moderate wind offsets the shot for difficulty.
 
-Full Scene: Trebuchet.tscn (Node2D Root → Trebuchet.gd)
+| Parameter | Effect | Sweet Spot |
+| --- | --- | --- |
+| Counterweight Mass ↑ | Range scales with √m | 500 – 1000 kg |
+| Projectile Mass ↓ | Less energy loss | 10 – 50 kg |
+| Arm Ratio 1:4–1:6 | Matches real trebuchets | Short arm = 20% total |
+| Release ≈ 20° | Produces ~45° projectile arc | Auto-tuned |
+| Wind | Adds lateral drift | ±10 m/s for challenge |
 
+## Gameplay Loop
+1. Adjust sliders and watch `TrajectoryLine` update instantly via `_update_trajectory()`.
+2. Press **FIRE!** to release the hinge limits; the arm swings under gravity.
+3. Projectile auto-detaches when angular velocity peaks; impact destroys castle bricks.
+4. Score updates (distance + bricks). High score persists between sessions.
+5. System auto-resets for the next shot.
+
+## Quick Start (Godot 4.3+)
+1. Download Godot 4.3 or newer.
+2. `Project > Import` and select `project.godot` from this repo.
+3. Open `Trebuchet.tscn` (Node2D root with `Trebuchet.gd`).
+4. Press **F5** to run.
+5. Export using built-in presets when ready (see below).
+
+## Scene Layout
+```
 Trebuchet (Node2D, script=Trebuchet.gd)
-├── ParallaxBackground
-│ └── ParallaxLayer (Sky + Ground textures; motion_scale=0.5)
-├── Ground (StaticBody2D + SegmentShape2D (-10,0)-(60,0))
-├── Frame (StaticBody2D, pos(0,0); RectShape2D(4x6); brown ColorRect)
-├── ArmPivot (Node2D, pos(0,3))
-├── Arm (RigidBody2D; RectShape2D(8.4x0.3 offset(4.2,0)); wood ColorRect)
-│ ├── CounterAttach (Node2D(-1.6,0))
-│ ├── SlingAttach (Node2D(6.8,0))
-│ └── Trail (Line2D; width=2; points=[]) # Projectile trail
-├── Hinge (HingeJoint2D; node_a=Frame, node_b=Arm)
-├── Counterweight (RigidBody2D; CircleShape2D(r=0.8); gray)
-├── PinCounter (PinJoint2D)
-├── Projectile (RigidBody2D; CircleShape2D(r=0.4); black)
-│ └── GPUParticles2D (Dust trail; texture=circle)
-├── PinSling (PinJoint2D)
-├── Castle (Node2D pos(35,0); instance Castle.tscn)
-├── Camera2D (enabled=true; follow script)
-└── CanvasLayer (UI)
- └── Control (anchors=full)
- ├── VBoxContainer (top-right; spacing=10)
- │ ├── 5x (Label + HSlider)
- │ ├── Label (Live Range: ??m)
- │ ├── Button (FIRE!)
- │ ├── Label (Score: 0 | High: 0)
- │ └── TrajectoryLine (Line2D; points=[]; width=3; modulate=yellow; dotted gradient)
- ├── ImpactParticles (GPUParticles2D; explosion)
- └── Audio (Multiple AudioStreamPlayer: launch.ogg, boom.ogg)
+├─ ParallaxBackground → ParallaxLayer (sky + ground textures)
+├─ Ground (StaticBody2D + SegmentShape2D from -10,0 to 60,0)
+├─ Frame (StaticBody2D, rectangular ColorRect shell)
+├─ ArmPivot (Node2D at 0,3)
+├─ Arm (RigidBody2D, RectShape2D 8.4x0.3)
+│  ├─ CounterAttach (Node2D at -short_len)
+│  ├─ SlingAttach (Node2D at long_len)
+│  └─ Trail (Line2D for projectile path)
+├─ Hinge (HingeJoint2D tying Frame + Arm)
+├─ Counterweight (RigidBody2D + PinJoint2D)
+├─ Projectile (RigidBody2D + PinJoint2D, dust particles child)
+├─ Castle (instance of `Castle.tscn`, bricks with `body_entered` signal)
+├─ Camera2D (script follows projectile on launch)
+└─ CanvasLayer (UI: sliders, labels, Fire button, trajectory preview, particles, audio)
+```
+`Castle.tscn` contains ~10 stacked bricks (RigidBody2D) with brown ColorRects. Collisions increment the score and optionally `queue_free` bricks for dramatic crumble.
 
-Castle.tscn (Node2D): 10x RigidBody2D bricks (Rect 2x1, brown; stacked with PinJoint2D). Each has body_entered signal → increment score.Assets (Free): Sprites: Kenney.nl (wood/rock), OpenGameArt particles. 
-Sounds: Freesound.org (launch/impact). 
-Use ColorRect for quick prototypes.
+## Core Script Highlights (`Trebuchet.gd`)
+- `_ready()` wires slider `value_changed`, Fire button, impact signals, and loads the saved high score.
+- `_update_params()` keeps masses, arm length, draw angle, and wind force synchronized with the UI, then refreshes the live trajectory preview.
+- `_update_trajectory()` performs a 200-step Euler integration using the arm rotation + estimated release velocity, writing points into `TrajectoryLine` and `range_label`.
+- `_fire()` unlocks hinge limits, plays launch audio, and sets a camera tween toward the projectile.
+- `_release()` detaches `PinJoint2D`, applies sling boost impulse, and begins tracking for impact VFX/SFX.
+- `_on_impact()` tallies score, spawns impact particles, updates labels, and triggers `_reset()` after a short delay while preserving `high_score` via `ConfigFile`.
 
-Full GDScript: Trebuchet.gdgdscript
-
-extends Node2D
-
-@onready var arm: RigidBody2D = $Arm
-@onready var counter_rb: RigidBody2D = $Counterweight
-@onready var proj_rb: RigidBody2D = $Projectile
-@onready var hinge: HingeJoint2D = $Hinge
-@onready var pin_sling: PinJoint2D = $PinSling
-@onready var trajectory: Line2D = $CanvasLayer/UI/TrajectoryLine
-@onready var range_label: Label = $CanvasLayer/UI/RangeLabel
-@onready var score_label: Label = $CanvasLayer/UI/ScoreLabel
-@onready var sliders: Dictionary = {} # Populated in _ready
-@onready var fire_btn: Button = $CanvasLayer/UI/FireBtn
-@onready var camera: Camera2D = $Camera2D
-@onready var impact_particles: GPUParticles2D = $CanvasLayer/ImpactParticles
-@onready var launch_audio: AudioStreamPlayer2D = $CanvasLayer/Audio/Launch
-@onready var boom_audio: AudioStreamPlayer2D = $CanvasLayer/Audio/Boom
-
-var short_ratio: float = 0.2
-var arm_thickness: float = 0.3
-var arm_density: float = 500.0
-var is_firing: bool = false
-var score: int = 0
-var high_score: int = 0
-var wind_force: float = 0.0
-
-const GRAVITY: float = 980.0 # Pixels/s² (Godot default scaled)
-const SIM_STEPS: int = 200
-const DT: float = 0.016 # 60FPS
-
-func _ready():
- # Connect sliders (name them CounterSlider, ProjSlider, etc.)
- sliders["counter"] = $CanvasLayer/UI/VBox/CounterSlider; sliders.counter.value_changed.connect(_update_params)
- # ... similarly for proj, arm_len, draw, wind
- fire_btn.pressed.connect(_fire)
- proj_rb.body_entered.connect(_on_impact)
- _load_highscore()
- _reset()
-
-func _update_params(_val = null):
- counter_rb.mass = sliders.counter.value
- proj_rb.mass = sliders.proj.value
- wind_force = sliders.wind.value
- _update_arm_length(sliders.arm_len.value)
- _update_draw_angle(sliders.draw.value)
- _reset()
- _update_trajectory()
-
-func _update_arm_length(total: float):
- var short = total * short_ratio
- $Arm/CounterAttach.position.x = -short
- $Arm/SlingAttach.position.x = total - short
- var shape = RectangleShape2D.new()
- shape.size = Vector2(total, arm_thickness)
- $Arm/CollisionShape2D.shape = shape
- $Arm/CollisionShape2D.position.x = (total / 2) - short
- $Arm.mass = total * arm_thickness * arm_density
-
-func _update_draw_angle(deg: float):
- # Handled in _reset hinge limits
-
-func _physics_process(delta):
- if not is_firing:
- _update_trajectory()
- if is_firing and arm.rotation_degrees < 25 and abs(arm.angular_velocity) > 15:
- _release()
- if wind_force != 0 and proj_rb.visible:
- proj_rb.apply_force(Vector2(wind_force * 100, 0))
-
+### Sample Snippet
+```gdscript
 func _update_trajectory():
- trajectory.clear_points()
- var start_pos = $Arm/SlingAttach.global_position
- var est_vel = _estimate_release_vel() # Arm tip speed * 1.2 sling factor
- var pos = start_pos
- var vel = est_vel.rotated(arm.rotation)
- for i in SIM_STEPS:
- pos += vel * DT
- vel.y += GRAVITY * DT
- trajectory.add_point(camera.to_local(pos)) # World to screen
- if pos.y > 1000: break # Ground hit
- range_label.text = "Est. Range: %.1fm" % (pos.x / 100)
+    trajectory.clear_points()
+    var start_pos = $Arm/SlingAttach.global_position
+    var est_vel = _estimate_release_vel().rotated(arm.rotation)
+    var pos = start_pos
+    var vel = est_vel
+    for i in SIM_STEPS:
+        pos += vel * DT
+        vel.y += GRAVITY * DT
+        trajectory.add_point(camera.to_local(pos))
+        if pos.y > 1000:
+            break
+    range_label.text = "Est. Range: %.1fm" % (pos.x / 100)
+```
 
-func _estimate_release_vel() -> Vector2:
- # Simple: scale by counter mass sqrt + arm len
- return Vector2(0, -sqrt(counter_rb.mass) * 10 * ($Arm/SlingAttach.position.x / 8.0))
+## Deployment
+**Web (5 min)**
+1. `Project > Export` → add **Web** preset.
+2. Disable threads for maximum compatibility.
+3. Export to a folder, upload `index.html` bundle to itch.io/Netlify, or embed via `<iframe src="game.html"></iframe>`.
 
-func _reset():
- # Freeze/reposition as before (from previous code)
- arm.freeze = true
- # ... (full reset logic)
- arm.freeze = false
- arm.sleeping = true
- _update_trajectory()
+**Android (≈15 min)**
+1. Install Android SDK + Commandline Tools.
+2. Configure keystore under `Project Settings > Android`.
+3. Export APK; sideload via USB or submit to Google Play. App needs no permissions.
 
-func _fire():
- if is_firing: return
- is_firing = true
- launch_audio.play()
- # Release hinge limits
- hinge.angular_limit_upper = deg_to_rad(-50)
- # ...
+## Mobile Tweaks
+- Anchor UI to full rect; sliders/buttons should scale for touch.
+- Keep particles modest on low-end devices and prefer GPUParticles2D for efficiency.
+- Jolt physics holds 60 FPS even on modest phones if `SIM_STEPS` is capped around 100 for previews.
 
-func _release():
- pin_sling.node_b = null
- var boost = proj_rb.linear_velocity * 0.6 + Vector2(300, -100)
- proj_rb.apply_central_impulse(boost)
- # Tween camera follow
- var tween = create_tween()
- tween.tween_property(camera, "position", proj_rb.global_position, 0.5)
+## Tuning & Debug
+| Issue | Fix |
+| --- | --- |
+| Arm jitter | Increase joint bias to 0.5 and solver iterations to 10. |
+| Launch feels weak | Raise sling boost impulse or lower projectile mass. |
+| Trajectory preview off | Tune `_estimate_release_vel()` scalar or reduce `SIM_STEPS`. |
+| Web build slow | Cut preview steps to 100, disable multithreading. |
+| Need visibility while debugging | Enable `Visible Collision Shapes` in `Project Settings > Debug`. |
 
-func _on_impact(body):
- score += 1 # Per brick
- if body.is_in_group("castle"): body.queue_free()
- impact_particles.global_position = proj_rb.global_position
- impact_particles.emitting = true
- boom_audio.play()
- score_label.text = "Score: %d | High: %d" % [score, high_score]
- await get_tree().create_timer(2.0).timeout
- _reset()
- score = 0
+## Credits & License
+- Engine: Godot 4.3+
+- Art: Kenney sprites (wood/rock) + OpenGameArt particles. Placeholder ColorRects included.
+- Audio: Freesound (launch/impact samples).
+- Contact: info@trebuchetdynamics.com
 
-func _load_highscore():
- var config = ConfigFile.new()
- config.load("user://highscore.cfg")
- high_score = config.get_value("scores", "high", 0)
-
-# Save on quit/score beat
-
-Trajectory: Manual Euler integration (accurate for preview). Particles: GPUParticles2D (Kenney pack). DeploymentWeb (5 mins)Project → Export → Add "Web" preset. 
-Threads: Disabled (perf). 
-Export to folder → Upload index.html + files to itch.io/Netlify. 
-Embed: <iframe src="game.html"></iframe>. Works on mobile!
-
-Android (15 mins)Download Android SDK/Commandline Tools. 
-Project Settings → Android → Keystore (debug/release). 
-Export APK → Install via USB/Play Store. 
-Tips: Permissions: none needed. Test on device.
-
- Mobile TweaksUI anchors: full rect. 
-Input: Touch for fire (Button scales). 
-Perf: Jolt physics; limit particles.
-
- Tuning & DebugIssue
-Fix
-Jitter
-Joint bias=0.5; solver_iter=10
-Weak
-↑ boost impulse
-Preview Off
-Tune _estimate_release_vel
-Web Slow
-↓ SIM_STEPS=100; no threads
-
-Project Settings: Physics → 2D → Visible Collision = On (dev). Credits & AssetsEngine: Godot 4.3+ 
-Particles: Kenney Particle Pack (free). 
-Inspo: Trajectory tutorials. 
-Company: Trebuchet Dynamics Limited – Contact: info@trebuchetdynamics.com
-
- LicenseMIT – Free for commercial use. Fork & star on GitHub!Deploy now: Clients will love the physics demo!  
-
+Released under the **MIT License**—fork, remix, and ship commercially. Have fun flinging castles!

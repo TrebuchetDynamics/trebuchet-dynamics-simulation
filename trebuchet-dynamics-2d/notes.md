@@ -1,184 +1,88 @@
-Trebuchet 2D Godot Dossier: Simple Mass Slider EditionThis dossier provides a complete, minimal prototype for a 2D Godot trebuchet game (Godot 4.x recommended). We've stripped it to one slider: Counterweight Mass (50-2000 kg). Tweak it to see instant range changes—physics engine simulates everything realistically.Play Loop: Adjust mass → FIRE → Watch projectile fly → Auto-reset after landing.
-Targets: Simple destructible stack ahead (bonus score via collisions).
-Time to Build: 15-30 mins. No assets needed (uses colored rects/circles).
-Physics Engine: Godot's 2D (Jolt/Bullet) handles gravity, joints, energy transfer automatically. Mass changes update inertia on-the-fly.
+# Trebuchet 2D Godot Dossier — Single Slider Edition
 
-1. Physics PrinciplesA trebuchet converts counterweight potential energy to projectile kinetic energy via arm rotation.Key Equations (Transparent Derivation)Potential Energy Stored (counterweight at preload height):Ep=mcw⋅g⋅hE_p = m_{cw} \cdot g \cdot hE_p = m_{cw} \cdot g \cdot h
-mcwm_{cw}m_{cw}
-: Counterweight mass (your slider!)
-g=9.81 m/s2g = 9.81 \, \mathrm{m/s^2}g = 9.81 \, \mathrm{m/s^2}
- (Godot default)
-h=h =h =
- Short arm length × (1 - cos(θ))  (θ = draw angle ~90° → h ≈ short_len)
-How to arrive: Height drop = pivot_radius × angular_drop. For θ=90° horizontal preload, h = short_len.
+A minimal-yet-complete Godot 4.x prototype that focuses on a single UI control: **Counterweight Mass (50–2000 kg)**. Adjust it, fire, watch the projectile arc, and repeat. This setup is ideal for a lightning-fast pitch (15–30 minutes to build) because it uses only colored rects/circles, Godot physics, and auto-reset logic.
 
-Arm Rotation: HingeJoint2D limits preload → release. Angular acceleration α from torque τ = m_{cw} × short_len × g × sin(θ).
-Sling Release: Detach PinJoint2D at optimal arm angle (~20-40° past vertical for max velocity). Projectile velocity ≈ arm_tip_speed × efficiency (60-90% real; tune boost).
-Trajectory: Ballistic under gravity. Range ≈ v2sin⁡(2ϕ)g\frac{v^2 \sin(2\phi)}{g}\frac{v^2 \sin(2\phi)}{g}
- (φ=release angle ~45° ideal).
+## Play Loop & Goals
+1. Move the counterweight slider and observe how range estimates change immediately.
+2. Press **FIRE** to drop the counterweight; the arm swings through the preload limit.
+3. Projectile detaches around 20° past vertical, smashes into a simple destructible stack, and scoring increments per collision.
+4. Scene auto-resets after the projectile lands so you can iterate instantly.
 
-Parameter
-Default
-Effect on Range
-Counter Mass
-500 kg
-Linear increase: Double mass → ~√2 range boost (energy ∝ m)
-Short:Long Ratio
-1:4
-Optimal for heavy counters
-Draw Angle
-90°
-Higher = more h, but over-swing risk
-Release Angle
-~20°
-Max v at 0° vertical; tune for 45° proj
+Targets use just a stack of RigidBody2D bricks positioned ahead of the trebuchet. No external assets are required, making this perfect for workshops or interviews.
 
-Sim Tweak: Godot auto-conserves momentum. Test: 100kg → short range; 1500kg → castle-smashing!2. Scene Structure (Trebuchet.tscn)Create new scene → Node2D root. Add children:
+## Physics Principles
+A trebuchet converts counterweight potential energy into projectile kinetic energy via arm rotation. The only tuning surface you expose is counterweight mass, yet the math remains transparent.
 
-Trebuchet (Node2D → Trebuchet.gd)
-├── Ground (StaticBody2D)
-│   └── CollisionShape2D (SegmentShape2D: from (-10,0) to (50,0))
-├── Frame (StaticBody2D, pos: (0,0))
-│   ├── Sprite2D (modulate: brown; TextureRect or ColorRect 100x200px)
-│   └── CollisionShape2D (RectangleShape2D: size=Vector2(4,6))
-├── ArmPivot (Node2D, pos: (0,3))  # Hinge here
-├── Arm (RigidBody2D)
-│   ├── Sprite2D (modulate: dark brown; ColorRect 800x60px → scale to 1x0.075)
-│   └── CollisionShape2D (RectangleShape2D: size=Vector2(8.4, 0.3); pos=(4.2,0))
-├── Hinge (HingeJoint2D)  # node_a=Frame; node_b=Arm; position=(0,3)
-├── CounterAttach (Node2D)  # Child of Arm; pos: (-1.6, 0)
-├── Counterweight (RigidBody2D)
-│   ├── Sprite2D (modulate: gray; Circle 80px diam)
-│   └── CollisionShape2D (CircleShape2D: radius=0.8)
-├── PinCounter (PinJoint2D)  # node_a=CounterAttach; node_b=Counterweight
-├── SlingAttach (Node2D)  # Child of Arm; pos: (6.8, 0)
-├── Projectile (RigidBody2D, sleeping=true)
-│   ├── Sprite2D (modulate: black; Circle 40px)
-│   └── CollisionShape2D (CircleShape2D: radius=0.4)
-├── PinSling (PinJoint2D)  # node_a=SlingAttach; node_b=Projectile
-└── CanvasLayer
-    └── UI (Control, anchors: full rect)
-        └── VBoxContainer (anchors: top-right; pos: (20,20); theme_overrides → spacing=10)
-            ├── Label ("Counterweight Mass (kg): 500")
-            ├── HSlider (min=50; max=2000; value=500; step=50; size=Vector2(300,30))
-            └── Button ("FIRE!")
+```
+E_p = m_cw * g * h
+h = short_len * (1 - cos(theta))
+τ = m_cw * short_len * g * sin(theta)
+Range ≈ (v^2 * sin(2φ)) / g  (φ ≈ 45° ideal)
+```
+- Godot gravity is 9.81 m/s² by default; leave it unless you want exaggerated arcs.
+- `h` is the drop height of the counterweight; with a 90° draw, `h ≈ short_len`.
+- Sling release occurs around 20–40° past vertical; tune the exact value to hit a 45° projectile trajectory.
+- Momentum conservation comes for free via Godot physics. Doubling the counterweight roughly increases range by √2.
 
-Hinge Setup (Inspector): angular_limit/enabled=true; lower=-135°; upper=92° (preload lock).
-Joints: Bias=0.3 (stiff); soft=false.
-RigidBodies: Gravity scale=1; Mass=1 initial (script overrides).
-Targets (optional, at x=30): Stack 3 RigidBody2D boxes → body_entered signal on Projectile for score.
+### Parameter Quick Reference
+| Parameter | Default | Effect on Range |
+| --- | --- | --- |
+| Counterweight Mass | 500 kg | Linear energy source (UI slider). |
+| Short : Long Ratio | 1 : 4 | Mimics real machines; favors heavy counters. |
+| Draw Angle | 90° | Higher angle → more stored potential energy. |
+| Release Angle | ~20° | Maximizes projectile speed for ≈45° arc. |
 
-3. Full GDScript (Trebuchet.gd)Attach to root Node2D. Drag UI nodes to @onready.gdscript
+Test examples: 100 kg barely clears the frame; 1500 kg obliterates the target stack.
 
+## Scene Recipe (`Trebuchet.tscn`)
+1. Create a `Node2D` root named **Trebuchet** and attach `Trebuchet.gd`.
+2. Add world pieces:
+   - `Ground` (`StaticBody2D`) with `SegmentShape2D` from (-10, 0) to (50, 0).
+   - `Frame` (`StaticBody2D`) built from a brown `ColorRect` + `RectangleShape2D` sized roughly 4×6 meters.
+   - `Arm` (`RigidBody2D`) positioned at `(0,3)` with a `RectangleShape2D` sized `Vector2(8.4, 0.3)` and a matching `Sprite2D`/`ColorRect`.
+3. Add joint helpers:
+   - `ArmPivot` (`Node2D`) at `(0,3)`.
+   - `HingeJoint2D` connecting `Frame` (node_a) and `Arm` (node_b); enable angular limits with lower `-135°` and upper `92°` to preload.
+   - `CounterAttach`/`SlingAttach` nodes on the arm at `-1.6` and `6.8` meters respectively.
+4. Create masses:
+   - `Counterweight` (`RigidBody2D`) with `CircleShape2D` (radius 0.8 m) and a gray `Sprite2D`. Pin it via `PinJoint2D` to `CounterAttach`.
+   - `Projectile` (`RigidBody2D`, sleeping=true) with `CircleShape2D` radius 0.4 m, black `Sprite2D`, dust `GPUParticles2D`, and `PinJoint2D` to `SlingAttach`.
+5. UI Layer:
+   - `CanvasLayer` → `Control` (anchors full).
+   - Inside a top-right `VBoxContainer` place `Label` ("Counterweight Mass (kg): 500"), `HSlider` (`min=50`, `max=2000`, `step=50`), and `Button` ("FIRE!"). Rename nodes to `MassLabel`, `MassSlider`, `FireBtn` to match the script.
+6. Target stack: add three `RigidBody2D` boxes at `x=30`. Connect their `body_entered` signal to the projectile for scoring.
+
+## Script Outline (`Trebuchet.gd`)
+```gdscript
 extends Node2D
 
-@onready var arm: RigidBody2D = $Arm
-@onready var counter_rb: RigidBody2D = $Counterweight
-@onready var proj_rb: RigidBody2D = $Projectile
-@onready var arm_coll: CollisionShape2D = $Arm/CollisionShape2D
-@onready var counter_attach: Node2D = $Arm/CounterAttach
-@onready var sling_attach: Node2D = $Arm/SlingAttach
-@onready var hinge: HingeJoint2D = $Hinge
-@onready var pin_sling: PinJoint2D = $PinSling
-@onready var mass_label: Label = $CanvasLayer/UI/VBoxContainer/MassLabel  # Rename Label
-@onready var mass_slider: HSlider = $CanvasLayer/UI/VBoxContainer/MassSlider  # Rename HSlider
-@onready var fire_btn: Button = $CanvasLayer/UI/VBoxContainer/FireBtn
+@onready var arm          = $Arm
+@onready var counter_rb   = $Counterweight
+@onready var proj_rb      = $Projectile
+@onready var sling_attach = $Arm/SlingAttach
+@onready var mass_label   = $CanvasLayer/UI/VBoxContainer/MassLabel
+@onready var mass_slider  = $CanvasLayer/UI/VBoxContainer/MassSlider
+@onready var fire_btn     = $CanvasLayer/UI/VBoxContainer/FireBtn
 
-const SHORT_LEN: float = 1.6  # m (fixed)
-const LONG_LEN: float = 6.8   # m (fixed; total=8.4)
-const DRAW_ANGLE_DEG: float = 92.0  # Slight over for preload
-const ARM_MASS: float = 200.0  # kg fixed
-const PROJ_MASS: float = 20.0  # kg fixed
+const SHORT_LEN := 1.6
+const LONG_LEN  := 6.8
+const DRAW_ANGLE_DEG := 92.0
+const ARM_MASS := 200.0
+const PROJ_MASS := 20.0
+var is_firing := false
+```
+Implementation notes:
+- `_ready()` hooks slider and button signals, sets slider defaults, and calls `_reset()`.
+- `_on_mass_changed()` updates `counter_rb.mass`, refreshes the label with formatted kilograms, and re-arms the trebuchet.
+- `_reset()` freezes bodies, rotates the arm to the draw angle, restores hinge limits to ±2°, reattaches the projectile, and unfreezes bodies (keeping them sleeping until fired).
+- `_fire()` unlocks hinge limits (e.g., lower `=-140°`, upper `=-50°`), clears sleeping flags, and lets gravity do the work.
+- `_physics_process()` watches for `arm.rotation_degrees < 25` with sufficient angular velocity before calling `_release_projectile()`.
+- `_release_projectile()` detaches the sling (`pin_sling.node_b = null`), applies a small impulse for sling boost, and ensures the projectile stays awake.
 
-var is_firing: bool = false
+## Debug & Polishing Tips
+- Set joint bias to ~0.3–0.5 for snappier response. Increase solver iterations if the arm jitters with high masses.
+- Tweak the boost impulse vector `(Vector2(250 * cos(proj.rotation), -100))` to mimic sling behavior.
+- Enable **Visible Collision Shapes** while tuning and disable before exporting.
+- For range comparison, log `proj_rb.global_position.x` upon landing to correlate slider positions to performance.
 
-func _ready() -> void:
-    mass_slider.value_changed.connect(_on_mass_changed)
-    fire_btn.pressed.connect(_fire)
-    mass_slider.value = 500.0  # Default
-    _reset()
-
-func _on_mass_changed(value: float) -> void:
-    mass_label.text = "Counterweight Mass (kg): %.0f" % value
-    counter_rb.mass = value
-    _reset()
-
-func _physics_process(delta: float) -> void:
-    if is_firing and arm.rotation_degrees < 25.0 and arm.angular_velocity.length() > 15.0:
-        _release_projectile()
-        is_firing = false
-
-func _reset() -> void:
-    # Freeze for safe reset
-    arm.freeze = true
-    counter_rb.freeze = true
-    proj_rb.freeze = true
-    
-    # Position arm drawn back (positive rotation = CCW/back)
-    arm.rotation_degrees = DRAW_ANGLE_DEG
-    arm.angular_velocity = 0.0
-    arm.linear_velocity = Vector2.ZERO
-    
-    # Reposition projectile
-    proj_rb.global_position = sling_attach.global_position
-    proj_rb.linear_velocity = Vector2.ZERO
-    pin_sling.node_b = proj_rb
-    
-    # Lock hinge at preload (±2°)
-    var draw_rad: float = deg_to_rad(DRAW_ANGLE_DEG)
-    hinge.angular_limit_enabled = true
-    hinge.angular_limit_lower = draw_rad - deg_to_rad(2.0)
-    hinge.angular_limit_upper = draw_rad + deg_to_rad(2.0)
-    
-    # Arm mass fixed
-    arm.mass = ARM_MASS
-    proj_rb.mass = PROJ_MASS
-    
-    # Unfreeze & sleep
-    arm.freeze = false
-    counter_rb.freeze = false
-    proj_rb.freeze = false
-    arm.sleeping = true
-    counter_rb.sleeping = true
-    proj_rb.sleeping = true
-
-func _fire() -> void:
-    if is_firing: return
-    is_firing = true
-    
-    # Release: Allow full forward swing
-    hinge.angular_limit_upper = deg_to_rad(-50.0)
-    hinge.angular_limit_lower = deg_to_rad(-140.0)
-    arm.sleeping = false  # Drop!
-
-func _release_projectile() -> void:
-    pin_sling.node_b = null  # Free!
-    # Sling boost: Inherit + forward impulse (tune for realism)
-    var vel_boost: Vector2 = proj_rb.linear_velocity * 0.6 + Vector2(250.0 * cos(proj_rb.rotation), -100.0)
-    proj_rb.apply_central_impulse(vel_boost)
-    proj_rb.sleeping = false
-    
-    # Auto-reset after 3s
-    await get_tree().create_timer(3.0).timeout
-    _reset()
-
-4. Setup & TestingBuild Scene: Follow structure. Use ColorRect for sprites (Inspector: Texture → New CanvasTexture → Diffuse → ColorRect).
-Run: F6 → Slider right → FIRE. Watch range explode!
-Debug: Project Settings > Physics > 2D > Visible Collision Shapes = On.
-Enhance:Score: proj_rb.body_entered.connect(_on_hit) → Count destructions.
-Wind: func _physics_process: proj_rb.apply_force(Vector2(5,0)).
-Add Sliders: Duplicate _on_mass_changed pattern.
-
-5. Tuning TableIssue
-Fix
-Weak launch
-↑ counter mass; ↓ proj mass; ↑ DRAW_ANGLE_DEG
-Over-swing
-↓ hinge upper limit; ↑ release threshold (25°)
-Jittery
-Joints: ↑ bias (0.5); ↓ solver iterations (Project Settings)
-No reset
-Ensure _release_projectile timer
-
-This is 100% physics-accurate and expandable. Mass slider alone shows core fun—energy scales beautifully! Questions? Paste errors for debug.
-
+This dossier keeps the experience approachable: one slider, visible physics, and immediate feedback. Expand from here if you need the full multi-slider simulator described in the README.
