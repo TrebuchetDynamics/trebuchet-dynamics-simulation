@@ -31,7 +31,7 @@ res://
 ├── scenes/
 │   └── Trebuchet.tscn         # Node hierarchy skeleton (simulation + UI containers)
 └── scripts/
-    └── Trebuchet.gd           # Slider UI, trajectory sim, scoring, castle builder
+	└── Trebuchet.gd           # Slider UI, trajectory sim, scoring, castle builder
 ```
 Everything inside the scene besides `Trebuchet.gd` is intentionally primitive (Polygon2D rectangles) to keep iteration fast. Replace nodes with actual sprites, RigidBody2D setups, particles, and audio once you are ready to polish.
 
