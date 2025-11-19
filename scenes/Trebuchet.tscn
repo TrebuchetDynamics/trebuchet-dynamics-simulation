@@ -40,6 +40,7 @@ shape = SubResource("CirclePivot")
 
 [node name="Arm" type="RigidBody2D" parent="Simulation/TrebuchetRig"]
 position = Vector2(0, -120)
+visible = true
 mass = 30.0
 freeze = true
 linear_damp = 0.1
@@ -51,6 +52,7 @@ shape = SubResource("RectArm")
 
 [node name="Counterweight" type="RigidBody2D" parent="Simulation/TrebuchetRig"]
 position = Vector2(0, -220)
+visible = true
 mass = 800.0
 linear_damp = 0.2
 angular_damp = 0.1

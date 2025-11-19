@@ -74,7 +74,7 @@ var sling_attached: bool = true
 func _ready() -> void:
 	_cache_scene_refs()
 	_build_ground()
-	_build_castle()
+	# _build_castle()
 	_setup_ui()
 	_load_high_score()
 	_configure_rig_from_sliders()
