@@ -99,23 +99,28 @@ func _ensure_simulation_tree() -> void:
 		projectile_shape.polygon = _projectile_polygon()
 		projectile_node.add_child(projectile_shape)
 
-func _ensure_node2d(parent: Node, name: String, initializer: Callable = Callable()) -> Node2D:
-	var node := parent.get_node_or_null(name) as Node2D
+func _ensure_simulation_refs() -> void:
+	if ground_root and castle_root and projectile_node and projectile_trail and trajectory_line:
+		return
+	_ensure_simulation_tree()
+
+func _ensure_node2d(parent: Node, node_name: String, initializer: Callable = Callable()) -> Node2D:
+	var node := parent.get_node_or_null(node_name) as Node2D
 	if node:
 		return node
 	node = Node2D.new()
-	node.name = name
+	node.name = node_name
 	parent.add_child(node)
 	if not initializer.is_null():
 		initializer.call(node)
 	return node
 
-func _ensure_line2d(parent: Node, name: String, color: Color, width: float) -> Line2D:
-	var line := parent.get_node_or_null(name) as Line2D
+func _ensure_line2d(parent: Node, node_name: String, color: Color, width: float) -> Line2D:
+	var line := parent.get_node_or_null(node_name) as Line2D
 	if line:
 		return line
 	line = Line2D.new()
-	line.name = name
+	line.name = node_name
 	line.default_color = color
 	line.width = width
 	line.antialiased = true
@@ -243,6 +248,7 @@ func _on_slider_changed(key: String, value: float) -> void:
 	_update_trajectory()
 
 func _fire() -> void:
+	_ensure_simulation_refs()
 	if is_projectile_active:
 		return
 	is_projectile_active = true
@@ -257,6 +263,7 @@ func _fire() -> void:
 	fire_button.disabled = true
 
 func _append_trail_point() -> void:
+	_ensure_simulation_refs()
 	if projectile_trail.get_point_count() == 0:
 		projectile_trail.add_point(projectile_position)
 		last_trail_point = projectile_position
@@ -289,9 +296,11 @@ func _estimate_release_velocity_vector() -> Vector2:
 	return Vector2(cos(release_angle) * px_speed, -sin(release_angle) * px_speed)
 
 func _update_projectile_node() -> void:
+	_ensure_simulation_refs()
 	projectile_node.position = projectile_position
 
 func _update_trajectory() -> void:
+	_ensure_simulation_refs()
 	var start := _projectile_start_pos()
 	var vel := _estimate_release_velocity_vector()
 	var pos := start
@@ -315,6 +324,9 @@ func _update_trajectory() -> void:
 		range_label.text = "Est. Range: %.1f m" % meters
 
 func _build_ground() -> void:
+	_ensure_simulation_refs()
+	if not ground_root:
+		return
 	for child in ground_root.get_children():
 		child.queue_free()
 	var sky := Polygon2D.new()
@@ -330,6 +342,9 @@ func _build_ground() -> void:
 	ground_root.add_child(ground)
 
 func _build_castle() -> void:
+	_ensure_simulation_refs()
+	if not castle_root:
+		return
 	for child in castle_root.get_children():
 		child.queue_free()
 	castle_bricks.clear()
@@ -367,6 +382,7 @@ func _projectile_polygon() -> PackedVector2Array:
 	return polygon
 
 func _reset_projectile() -> void:
+	_ensure_simulation_refs()
 	projectile_start = _projectile_start_pos()
 	projectile_position = projectile_start
 	projectile_velocity = Vector2.ZERO
