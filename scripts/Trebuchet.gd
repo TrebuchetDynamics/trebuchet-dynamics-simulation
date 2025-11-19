@@ -1,6 +1,7 @@
 extends Node2D
 
 const PIXELS_PER_METER := 6.0
+const RIG_SCALE := 3.0
 const GROUND_Y := 520.0
 const GRAVITY := 9.81
 const WIND_FORCE_SCALE := 3.2
@@ -11,19 +12,12 @@ const BRICK_COLUMNS := 4
 const BRICK_ROWS := 3
 const BRICK_SIZE := Vector2(48, 24)
 const BRICK_PADDING := Vector2(8, 6)
-const PROJECTILE_POINTS := [
-	Vector2(0, -10),
-	Vector2(7.07107, -7.07107),
-	Vector2(10, 0),
-	Vector2(7.07107, 7.07107),
-	Vector2(0, 10),
-	Vector2(-7.07107, 7.07107),
-	Vector2(-10, 0),
-	Vector2(-7.07107, -7.07107),
-]
+const RELEASE_TOLERANCE_DEG := 12.0
+const MIN_SHORT_METERS := 1.2
+const COUNTER_HINGE_DROP := 24.0
 const SCORE_FILE := "user://scores.cfg"
 
-var slider_state := {
+var slider_state: Dictionary = {
 	"counter": 800.0,
 	"projectile": 20.0,
 	"arm": 8.0,
@@ -39,27 +33,89 @@ const SLIDER_META := {
 	"wind": {"title": "Wind Force (m/s)", "min": -20.0, "max": 20.0, "step": 1.0, "format": "Wind: %.0f m/s"},
 }
 
-var slider_refs := {}
+var slider_refs: Dictionary = {}
 var range_label: Label
 var score_label: Label
 var fire_button: Button
 
-var projectile_position := Vector2.ZERO
-var projectile_velocity := Vector2.ZERO
-var projectile_start := Vector2.ZERO
-var is_projectile_active := false
-var last_trail_point := Vector2.ZERO
-var score := 0
-var high_score := 0
+var projectile_position: Vector2 = Vector2.ZERO
+var projectile_velocity: Vector2 = Vector2.ZERO
+var projectile_start: Vector2 = Vector2.ZERO
+var is_projectile_active: bool = false
+var last_trail_point: Vector2 = Vector2.ZERO
+var score: int = 0
+var high_score: int = 0
 
 var castle_bricks: Array = []
 
+var simulation_root: Node2D
 var ground_root: Node2D
 var castle_root: Node2D
-var projectile_node: Node2D
 var projectile_trail: Line2D
 var trajectory_line: Line2D
 var ui_root: Control
+var trebuchet_rig: Node2D
+var arm_body: RigidBody2D
+var arm_shape: CollisionShape2D
+var counterweight_body: RigidBody2D
+var projectile_body: RigidBody2D
+var joint_counterweight: PinJoint2D
+var joint_sling: DampedSpringJoint2D = null
+var sling_line: Line2D
+
+var arm_short_length_px: float = 60.0
+var arm_long_length_px: float = 160.0
+var sling_length_px: float = 120.0
+var release_angle_tolerance_deg: float = RELEASE_TOLERANCE_DEG
+var armed: bool = false
+var released: bool = false
+var sling_attached: bool = true
+
+func _ready() -> void:
+	_cache_scene_refs()
+	_build_ground()
+	_build_castle()
+	_setup_ui()
+	_load_high_score()
+	_configure_rig_from_sliders()
+	_reset_projectile_state()
+	_update_score_label()
+	_update_trajectory()
+
+func _cache_scene_refs() -> void:
+	simulation_root = get_node("Simulation") as Node2D
+	ground_root = simulation_root.get_node("GroundRoot") as Node2D
+	castle_root = simulation_root.get_node("CastleRoot") as Node2D
+	projectile_trail = simulation_root.get_node("ProjectileTrail") as Line2D
+	trajectory_line = simulation_root.get_node("TrajectoryLine") as Line2D
+	trebuchet_rig = simulation_root.get_node("TrebuchetRig") as Node2D
+	arm_body = trebuchet_rig.get_node("Arm") as RigidBody2D
+	arm_shape = arm_body.get_node("CollisionShape2D") as CollisionShape2D
+	counterweight_body = trebuchet_rig.get_node("Counterweight") as RigidBody2D
+	projectile_body = trebuchet_rig.get_node("Projectile") as RigidBody2D
+	joint_counterweight = trebuchet_rig.get_node("JointCounterweight") as PinJoint2D
+	joint_sling = trebuchet_rig.get_node_or_null("JointSling") as DampedSpringJoint2D
+	sling_line = trebuchet_rig.get_node("SlingLine") as Line2D
+	ui_root = _get_or_create_ui_root()
+
+func _physics_process(delta: float) -> void:
+	if not projectile_body:
+		return
+	var global_pos: Vector2 = projectile_body.global_position
+	var local_pos: Vector2 = _to_simulation(global_pos)
+	projectile_velocity = (local_pos - projectile_position) / max(delta, 0.0001)
+	projectile_position = local_pos
+	if is_projectile_active:
+		_check_release_condition()
+		_append_trail_point()
+		_check_castle_hits()
+		if released:
+			projectile_body.apply_central_force(Vector2(slider_state["wind"] * WIND_FORCE_SCALE, 0.0))
+		if projectile_position.y >= GROUND_Y:
+			_finalize_shot()
+	else:
+		projectile_position = _projectile_start_pos()
+	_update_sling_line()
 
 func _get_or_create_ui_root() -> Control:
 	var canvas_layer := get_node_or_null("CanvasLayer") as CanvasLayer
@@ -77,81 +133,6 @@ func _get_or_create_ui_root() -> Control:
 		ui.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		canvas_layer.add_child(ui)
 	return ui
-
-func _ensure_simulation_tree() -> void:
-	var simulation := get_node_or_null("Simulation") as Node2D
-	if not simulation:
-		simulation = Node2D.new()
-		simulation.name = "Simulation"
-		add_child(simulation)
-	ground_root = _ensure_node2d(simulation, "GroundRoot")
-	castle_root = _ensure_node2d(simulation, "CastleRoot")
-	projectile_node = _ensure_node2d(simulation, "Projectile", func(node: Node2D) -> void:
-		node.position = Vector2(120, 480)
-	)
-	projectile_trail = _ensure_line2d(simulation, "ProjectileTrail", Color(1, 1, 1, 0.4), 2.0)
-	trajectory_line = _ensure_line2d(simulation, "TrajectoryLine", Color(1, 0.882353, 0.133333, 1), 3.0)
-	var projectile_shape := projectile_node.get_node_or_null("ProjectileShape") as Polygon2D
-	if not projectile_shape:
-		projectile_shape = Polygon2D.new()
-		projectile_shape.name = "ProjectileShape"
-		projectile_shape.color = Color(0.117647, 0.117647, 0.117647, 1)
-		projectile_shape.polygon = _projectile_polygon()
-		projectile_node.add_child(projectile_shape)
-
-func _ensure_simulation_refs() -> void:
-	if ground_root and castle_root and projectile_node and projectile_trail and trajectory_line:
-		return
-	_ensure_simulation_tree()
-
-func _ensure_node2d(parent: Node, node_name: String, initializer: Callable = Callable()) -> Node2D:
-	var node := parent.get_node_or_null(node_name) as Node2D
-	if node:
-		return node
-	node = Node2D.new()
-	node.name = node_name
-	parent.add_child(node)
-	if not initializer.is_null():
-		initializer.call(node)
-	return node
-
-func _ensure_line2d(parent: Node, node_name: String, color: Color, width: float) -> Line2D:
-	var line := parent.get_node_or_null(node_name) as Line2D
-	if line:
-		return line
-	line = Line2D.new()
-	line.name = node_name
-	line.default_color = color
-	line.width = width
-	line.antialiased = true
-	parent.add_child(line)
-	return line
-
-func _ready() -> void:
-	_ensure_simulation_tree()
-	ui_root = _get_or_create_ui_root()
-	_build_ground()
-	_build_castle()
-	_setup_ui()
-	_load_high_score()
-	_reset_projectile()
-	_update_score_label()
-	_update_trajectory()
-
-func _physics_process(delta: float) -> void:
-	if is_projectile_active:
-		projectile_velocity.y += (GRAVITY * PIXELS_PER_METER) * delta
-		projectile_velocity.x += slider_state["wind"] * WIND_FORCE_SCALE * delta
-		projectile_position += projectile_velocity * delta
-		if projectile_position.y >= GROUND_Y:
-			projectile_position.y = GROUND_Y
-			_finalize_shot()
-		_append_trail_point()
-		_check_castle_hits()
-		_update_projectile_node()
-	else:
-		projectile_position = _projectile_start_pos()
-		_update_projectile_node()
 
 func _setup_ui() -> void:
 	for child in ui_root.get_children():
@@ -244,17 +225,24 @@ func _on_slider_changed(key: String, value: float) -> void:
 	slider_state[key] = value
 	_update_slider_label(key, value)
 	if not is_projectile_active:
-		_reset_projectile()
+		_configure_rig_from_sliders()
+		_reset_projectile_state()
 	_update_trajectory()
 
 func _fire() -> void:
-	_ensure_simulation_refs()
 	if is_projectile_active:
 		return
+	_configure_rig_from_sliders()
+	_cock_trebuchet()
+	_set_bodies_frozen(false)
+	for body in [arm_body, counterweight_body, projectile_body]:
+		if body:
+			body.sleeping = false
 	is_projectile_active = true
+	armed = true
+	released = false
 	projectile_start = _projectile_start_pos()
 	projectile_position = projectile_start
-	projectile_velocity = _estimate_release_velocity_vector()
 	projectile_trail.clear_points()
 	projectile_trail.add_point(projectile_position)
 	last_trail_point = projectile_position
@@ -263,7 +251,6 @@ func _fire() -> void:
 	fire_button.disabled = true
 
 func _append_trail_point() -> void:
-	_ensure_simulation_refs()
 	if projectile_trail.get_point_count() == 0:
 		projectile_trail.add_point(projectile_position)
 		last_trail_point = projectile_position
@@ -275,10 +262,10 @@ func _append_trail_point() -> void:
 			projectile_trail.remove_point(0)
 
 func _projectile_start_pos() -> Vector2:
-	var base := Vector2(140.0, GROUND_Y - 30.0)
-	base.x += (slider_state["arm"] - 8.0) * 8.0
-	base.y -= (slider_state["draw"] - 90.0) * 0.3
-	return base
+	if not arm_body:
+		return Vector2.ZERO
+	var global_pos: Vector2 = arm_body.to_global(Vector2(0, arm_long_length_px + sling_length_px))
+	return _to_simulation(global_pos)
 
 func _estimate_release_velocity_vector() -> Vector2:
 	var total_len: float = float(slider_state["arm"])
@@ -295,12 +282,7 @@ func _estimate_release_velocity_vector() -> Vector2:
 	var px_speed: float = tip_speed * sling_gain * PIXELS_PER_METER
 	return Vector2(cos(release_angle) * px_speed, -sin(release_angle) * px_speed)
 
-func _update_projectile_node() -> void:
-	_ensure_simulation_refs()
-	projectile_node.position = projectile_position
-
 func _update_trajectory() -> void:
-	_ensure_simulation_refs()
 	var start := _projectile_start_pos()
 	var vel := _estimate_release_velocity_vector()
 	var pos := start
@@ -324,7 +306,6 @@ func _update_trajectory() -> void:
 		range_label.text = "Est. Range: %.1f m" % meters
 
 func _build_ground() -> void:
-	_ensure_simulation_refs()
 	if not ground_root:
 		return
 	for child in ground_root.get_children():
@@ -342,7 +323,6 @@ func _build_ground() -> void:
 	ground_root.add_child(ground)
 
 func _build_castle() -> void:
-	_ensure_simulation_refs()
 	if not castle_root:
 		return
 	for child in castle_root.get_children():
@@ -375,20 +355,129 @@ func _rect_polygon(size: Vector2) -> PackedVector2Array:
 	polygon.append(Vector2(-half.x, half.y))
 	return polygon
 
-func _projectile_polygon() -> PackedVector2Array:
-	var polygon := PackedVector2Array()
-	for point in PROJECTILE_POINTS:
-		polygon.append(point)
-	return polygon
+func _configure_rig_from_sliders() -> void:
+	var arm_total_m: float = float(slider_state["arm"])
+	var short_m: float = float(clamp(arm_total_m * 0.28, MIN_SHORT_METERS, max(arm_total_m - 0.5, MIN_SHORT_METERS)))
+	var long_m: float = float(max(arm_total_m - short_m, 1.5))
+	var px_scale: float = PIXELS_PER_METER * RIG_SCALE
+	arm_short_length_px = short_m * px_scale
+	arm_long_length_px = long_m * px_scale
+	sling_length_px = clamp(long_m * 0.9 * px_scale, 60.0, 280.0)
+	release_angle_tolerance_deg = RELEASE_TOLERANCE_DEG
+	if counterweight_body:
+		counterweight_body.mass = slider_state["counter"]
+	if projectile_body:
+		projectile_body.mass = slider_state["projectile"]
+	if arm_body:
+		arm_body.mass = clamp(arm_total_m * 4.0, 8.0, 200.0)
+	_update_arm_shape()
+	_update_joint_targets()
 
-func _reset_projectile() -> void:
-	_ensure_simulation_refs()
-	projectile_start = _projectile_start_pos()
-	projectile_position = projectile_start
-	projectile_velocity = Vector2.ZERO
+func _update_arm_shape() -> void:
+	if not arm_shape:
+		return
+	var rect := arm_shape.shape as RectangleShape2D
+	if rect:
+		rect.size = Vector2(rect.size.x, arm_short_length_px + arm_long_length_px)
+	arm_shape.position.y = (arm_long_length_px - arm_short_length_px) * 0.5
+
+func _update_joint_targets() -> void:
+	if joint_counterweight:
+		joint_counterweight.local_anchor_a = Vector2(0, -arm_short_length_px)
+		joint_counterweight.local_anchor_b = Vector2.ZERO
+	if joint_sling:
+		joint_sling.local_anchor_a = Vector2(0, arm_long_length_px)
+		joint_sling.local_anchor_b = Vector2.ZERO
+		joint_sling.rest_length = sling_length_px
+
+func _cock_trebuchet() -> void:
+	if not arm_body or not projectile_body:
+		return
+	_ensure_sling_joint()
+	var cock_angle: float = -float(clamp(slider_state["draw"], 40.0, 120.0))
+	_set_bodies_frozen(true)
+	arm_body.rotation_degrees = cock_angle
+	arm_body.linear_velocity = Vector2.ZERO
+	arm_body.angular_velocity = 0.0
+	var counter_anchor_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
+	var counter_local := trebuchet_rig.to_local(counter_anchor_global + Vector2(0, -COUNTER_HINGE_DROP))
+	counterweight_body.position = counter_local
+	counterweight_body.linear_velocity = Vector2.ZERO
+	counterweight_body.angular_velocity = 0.0
+	var projectile_global := arm_body.to_global(Vector2(0, arm_long_length_px + sling_length_px))
+	projectile_body.position = trebuchet_rig.to_local(projectile_global)
+	projectile_body.rotation = 0.0
+	projectile_body.linear_velocity = Vector2.ZERO
+	projectile_body.angular_velocity = 0.0
+	sling_attached = true
+	released = false
+	armed = false
+
+func _set_bodies_frozen(flag: bool) -> void:
+	for body in [arm_body, counterweight_body, projectile_body]:
+		if body:
+			body.freeze = flag
+			if flag:
+				body.sleeping = true
+
+func _ensure_sling_joint() -> void:
+	if not trebuchet_rig or not arm_body or not projectile_body:
+		return
+	if joint_sling and is_instance_valid(joint_sling):
+		_update_joint_targets()
+		return
+	joint_sling = DampedSpringJoint2D.new()
+	joint_sling.name = "JointSling"
+	joint_sling.node_a = trebuchet_rig.get_path_to(arm_body)
+	joint_sling.node_b = trebuchet_rig.get_path_to(projectile_body)
+	joint_sling.disable_collision = true
+	joint_sling.stiffness = 5.0
+	joint_sling.damping = 0.05
+	trebuchet_rig.add_child(joint_sling)
+	_update_joint_targets()
+
+func _release_projectile() -> void:
+	released = true
+	sling_attached = false
+	if joint_sling and is_instance_valid(joint_sling):
+		joint_sling.queue_free()
+	joint_sling = null
+
+func _check_release_condition() -> void:
+	if released or not armed:
+		return
+	var tip_vector := (_arm_tip_global() - arm_body.global_position).normalized()
+	var angle: float = rad_to_deg(Vector2.UP.angle_to(tip_vector))
+	if angle <= release_angle_tolerance_deg:
+		_release_projectile()
+
+func _update_sling_line() -> void:
+	if not sling_line or not arm_body:
+		return
+	var anchor := trebuchet_rig.to_local(_arm_tip_global())
+	var points := PackedVector2Array()
+	points.append(anchor)
+	if sling_attached:
+		points.append(trebuchet_rig.to_local(projectile_body.global_position))
+	else:
+		points.append(anchor)
+	sling_line.points = points
+
+func _arm_tip_global() -> Vector2:
+	return arm_body.to_global(Vector2(0, arm_long_length_px))
+
+func _to_simulation(global_pos: Vector2) -> Vector2:
+	return simulation_root.to_local(global_pos)
+
+func _reset_projectile_state() -> void:
 	is_projectile_active = false
+	armed = false
+	released = false
 	projectile_trail.clear_points()
-	_update_projectile_node()
+	_cock_trebuchet()
+	projectile_position = _projectile_start_pos()
+	projectile_start = projectile_position
+	last_trail_point = projectile_position
 
 func _check_castle_hits() -> void:
 	var radius: float = 12.0
@@ -413,13 +502,15 @@ func _finalize_shot() -> void:
 	if not is_projectile_active:
 		return
 	is_projectile_active = false
+	fire_button.disabled = false
+	_set_bodies_frozen(true)
+	projectile_body.sleeping = true
 	var distance_m: float = max((projectile_position.x - projectile_start.x) / PIXELS_PER_METER, 0.0)
 	score += int(distance_m)
 	_update_score_label()
 	if score > high_score:
 		high_score = score
 		_save_high_score()
-	fire_button.disabled = false
 	_reset_after_delay()
 
 func _reset_after_delay() -> void:
@@ -427,7 +518,7 @@ func _reset_after_delay() -> void:
 	_reset_castle()
 	score = 0
 	_update_score_label()
-	_reset_projectile()
+	_reset_projectile_state()
 	_update_trajectory()
 
 func _reset_castle() -> void:

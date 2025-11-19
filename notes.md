@@ -15,7 +15,7 @@ TrebuchetRig (Node2D)
 ├─ Projectile (RigidBody2D)                  # also used by scoring/trail logic
 ├─ JointPivot (PinJoint2D)                   # Pivot ↔ Arm
 ├─ JointCounterweight (PinJoint2D)           # Arm ↔ Counterweight
-├─ JointSling (DistanceJoint2D)              # Arm ↔ Projectile (recreated after each shot)
+├─ JointSling (DampedSpringJoint2D)          # Arm ↔ Projectile (rest_length ~= sling, recreated per shot)
 └─ SlingLine (Line2D)                        # rope visualization
 ```
 
@@ -39,7 +39,7 @@ There is also a `GroundCollider` (StaticBody2D) that gives the projectile somewh
 
 - The arm collision shape is resized every time through `_update_arm_shape()` so the pivot stays centered while the long/short halves match the chosen arm ratio.
 - Counterweight hinge: `local_anchor_a = (0, -arm_short_length_px)` so the joint stays glued to the short arm. The counterweight body is positioned a small `COUNTER_HINGE_DROP` below that anchor to mimic a strap rather than a hard bolt.
-- Sling joint: `local_anchor_a = (0, arm_long_length_px)` on the arm, `local_anchor_b = Vector2.ZERO` on the projectile, with `length = sling_length_px`. The line visual simply draws anchor → projectile each frame.
+- Sling joint: `local_anchor_a = (0, arm_long_length_px)` on the arm, `local_anchor_b = Vector2.ZERO` on the projectile, with `rest_length = sling_length_px`. The line visual simply draws anchor → projectile each frame.
 - Freezing is handled via `_set_bodies_frozen(flag)` which toggles `RigidBody2D.freeze` and sleep states; this prevents the arm from sagging when sliders change while the sim is idle.
 
 ## Analytic Preview vs Actual Physics
