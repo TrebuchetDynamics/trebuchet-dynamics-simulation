@@ -1,11 +1,106 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/Trebuchet.gd" id="1_j3ybt"]
+
+[sub_resource type="RectangleShape2D" id="RectFrame"]
+size = Vector2(40, 220)
+
+[sub_resource type="CircleShape2D" id="CirclePivot"]
+radius = 8.0
+
+[sub_resource type="RectangleShape2D" id="RectArm"]
+size = Vector2(14, 220)
+
+[sub_resource type="RectangleShape2D" id="RectCounter"]
+size = Vector2(48, 48)
+
+[sub_resource type="CircleShape2D" id="CircleProjectile"]
+radius = 10.0
+
+[sub_resource type="RectangleShape2D" id="RectGround"]
+size = Vector2(1920, 40)
 
 [node name="Trebuchet" type="Node2D"]
 script = ExtResource("1_j3ybt")
 
 [node name="Simulation" type="Node2D" parent="."]
+
+[node name="TrebuchetRig" type="Node2D" parent="Simulation"]
+position = Vector2(180, 400)
+
+[node name="Frame" type="StaticBody2D" parent="Simulation/TrebuchetRig"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Frame"]
+shape = SubResource("RectFrame")
+
+[node name="Pivot" type="StaticBody2D" parent="Simulation/TrebuchetRig"]
+position = Vector2(0, -120)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Pivot"]
+shape = SubResource("CirclePivot")
+
+[node name="Arm" type="RigidBody2D" parent="Simulation/TrebuchetRig"]
+position = Vector2(0, -120)
+freeze = true
+gravity_scale = 1.0
+mass = 30.0
+linear_damp = 0.1
+angular_damp = 0.05
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Arm"]
+shape = SubResource("RectArm")
+position = Vector2(0, 50)
+
+[node name="Counterweight" type="RigidBody2D" parent="Simulation/TrebuchetRig"]
+position = Vector2(0, -220)
+gravity_scale = 1.0
+mass = 800.0
+linear_damp = 0.2
+angular_damp = 0.1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Counterweight"]
+shape = SubResource("RectCounter")
+
+[node name="Projectile" type="RigidBody2D" parent="Simulation/TrebuchetRig"]
+position = Vector2(0, 40)
+gravity_scale = 1.0
+mass = 20.0
+sleeping = true
+linear_damp = 0.05
+angular_damp = 0.02
+
+[node name="ProjectileShape" type="Polygon2D" parent="Simulation/TrebuchetRig/Projectile"]
+color = Color(0.117647, 0.117647, 0.117647, 1)
+polygon = PackedVector2Array(0, -10, 7.07107, -7.07107, 10, 0, 7.07107, 7.07107, 0, 10, -7.07107, 7.07107, -10, 0, -7.07107, -7.07107)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Projectile"]
+shape = SubResource("CircleProjectile")
+
+[node name="JointPivot" type="PinJoint2D" parent="Simulation/TrebuchetRig"]
+node_a = NodePath("../Pivot")
+node_b = NodePath("../Arm")
+bias = 0.9
+softness = 0.0
+
+[node name="JointCounterweight" type="PinJoint2D" parent="Simulation/TrebuchetRig"]
+position = Vector2(0, -200)
+node_a = NodePath("../Arm")
+node_b = NodePath("../Counterweight")
+softness = 0.0
+
+[node name="JointSling" type="DistanceJoint2D" parent="Simulation/TrebuchetRig"]
+position = Vector2(0, -20)
+node_a = NodePath("../Arm")
+node_b = NodePath("../Projectile")
+length = 80.0
+stiffness = 5.0
+damping = 0.05
+
+[node name="SlingLine" type="Line2D" parent="Simulation/TrebuchetRig"]
+default_color = Color(0.921569, 0.741176, 0.415686, 1)
+width = 2.0
+antialiased = true
+points = PackedVector2Array(0, -20, 0, 60)
 
 [node name="GroundRoot" type="Node2D" parent="Simulation"]
 
@@ -21,12 +116,11 @@ default_color = Color(1, 1, 1, 0.4)
 width = 2.0
 antialiased = true
 
-[node name="Projectile" type="Node2D" parent="Simulation"]
-position = Vector2(120, 480)
+[node name="GroundCollider" type="StaticBody2D" parent="Simulation"]
+position = Vector2(960, 540)
 
-[node name="ProjectileShape" type="Polygon2D" parent="Simulation/Projectile"]
-color = Color(0.117647, 0.117647, 0.117647, 1)
-polygon = PackedVector2Array(0, -10, 7.07107, -7.07107, 10, 0, 7.07107, 7.07107, 0, 10, -7.07107, 7.07107, -10, 0, -7.07107, -7.07107)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/GroundCollider"]
+shape = SubResource("RectGround")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
