@@ -52,21 +52,21 @@ var castle_bricks: Array = []
 @onready var ui_root: Control = _get_or_create_ui_root()
 
 func _get_or_create_ui_root() -> Control:
-    var canvas_layer := get_node_or_null("CanvasLayer") as CanvasLayer
-    if not canvas_layer:
-        canvas_layer = CanvasLayer.new()
-        canvas_layer.name = "CanvasLayer"
-        add_child(canvas_layer)
-    var ui := canvas_layer.get_node_or_null("UI") as Control
-    if not ui:
-        ui = Control.new()
-        ui.name = "UI"
-        ui.anchor_right = 1.0
-        ui.anchor_bottom = 1.0
-        ui.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        ui.size_flags_vertical = Control.SIZE_EXPAND_FILL
-        canvas_layer.add_child(ui)
-    return ui
+	var canvas_layer := get_node_or_null("CanvasLayer") as CanvasLayer
+	if not canvas_layer:
+		canvas_layer = CanvasLayer.new()
+		canvas_layer.name = "CanvasLayer"
+		add_child(canvas_layer)
+	var ui := canvas_layer.get_node_or_null("UI") as Control
+	if not ui:
+		ui = Control.new()
+		ui.name = "UI"
+		ui.anchor_right = 1.0
+		ui.anchor_bottom = 1.0
+		ui.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ui.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		canvas_layer.add_child(ui)
+	return ui
 
 func _ready() -> void:
 	_build_ground()
