@@ -1,88 +1,40 @@
-# Trebuchet 2D Godot Dossier — Single Slider Edition
+# Dev Notes — Trebuchet Dynamics 2D
 
-A minimal-yet-complete Godot 4.x prototype that focuses on a single UI control: **Counterweight Mass (50–2000 kg)**. Adjust it, fire, watch the projectile arc, and repeat. This setup is ideal for a lightning-fast pitch (15–30 minutes to build) because it uses only colored rects/circles, Godot physics, and auto-reset logic.
+This file tracks the implementation details and next milestones for the Godot 4.x trebuchet demo. The playable slice now mirrors most of the README promises: a slider-driven UI, manual trajectory prediction, scoring, and a scripted castle. Use this as a checklist as you evolve it into a full rigid-body trebuchet.
 
-## Play Loop & Goals
-1. Move the counterweight slider and observe how range estimates change immediately.
-2. Press **FIRE** to drop the counterweight; the arm swings through the preload limit.
-3. Projectile detaches around 20° past vertical, smashes into a simple destructible stack, and scoring increments per collision.
-4. Scene auto-resets after the projectile lands so you can iterate instantly.
+## Current Implementation Summary
+- **Scene:** `scenes/Trebuchet.tscn` is intentionally minimal. The script instantiates almost everything (UI, ground, castle) at runtime, so edits happen in code.
+- **Script:** `scripts/Trebuchet.gd` handles UI creation, slider state, projectile integration, trajectory preview, castle generation, scoring, and high-score persistence.
+- **Simulation model:** No physical `RigidBody2D` nodes yet. Launch math estimates sling velocity using counterweight energy and arm ratios, then integrates motion manually with gravity + wind.
+- **Castle:** Built as a configurable grid of `Polygon2D` blocks. Each destroyed block awards points; entire castle resets on a timer after a shot.
 
-Targets use just a stack of RigidBody2D bricks positioned ahead of the trebuchet. No external assets are required, making this perfect for workshops or interviews.
-
-## Physics Principles
-A trebuchet converts counterweight potential energy into projectile kinetic energy via arm rotation. The only tuning surface you expose is counterweight mass, yet the math remains transparent.
-
-```
-E_p = m_cw * g * h
-h = short_len * (1 - cos(theta))
-τ = m_cw * short_len * g * sin(theta)
-Range ≈ (v^2 * sin(2φ)) / g  (φ ≈ 45° ideal)
-```
-- Godot gravity is 9.81 m/s² by default; leave it unless you want exaggerated arcs.
-- `h` is the drop height of the counterweight; with a 90° draw, `h ≈ short_len`.
-- Sling release occurs around 20–40° past vertical; tune the exact value to hit a 45° projectile trajectory.
-- Momentum conservation comes for free via Godot physics. Doubling the counterweight roughly increases range by √2.
-
-### Parameter Quick Reference
-| Parameter | Default | Effect on Range |
+### Key Constants (tune as needed)
+| Const | Default | Effect |
 | --- | --- | --- |
-| Counterweight Mass | 500 kg | Linear energy source (UI slider). |
-| Short : Long Ratio | 1 : 4 | Mimics real machines; favors heavy counters. |
-| Draw Angle | 90° | Higher angle → more stored potential energy. |
-| Release Angle | ~20° | Maximizes projectile speed for ≈45° arc. |
+| `PIXELS_PER_METER` | 6 | Converts physics math to screen coordinates. Increase for tighter scene. |
+| `GROUND_Y` | 520 | Y position for collision floor. Move up/down for different horizons. |
+| `SIM_STEPS` | 220 | Number of Euler steps used for trajectory preview. |
+| `SCORE_FILE` | `user://scores.cfg` | High score persistence path. |
+| `BRICK_COLUMNS / ROWS` | 4 × 3 | Castle grid dimensions. |
 
-Test examples: 100 kg barely clears the frame; 1500 kg obliterates the target stack.
+## Code Walkthrough
+1. `_setup_ui()` clears the editor-authored `Control`, adds a `PanelContainer`, and generates sliders using `SLIDER_META`. Keep metadata in sync when adding sliders.
+2. `_update_trajectory()` is shared by the preview and “real” launch. Any physics tuning (wind, gravity scale, release angle logic) must stay identical to avoid mismatch between preview and actual shot.
+3. `_fire()` freezes slider inputs and seeds projectile state. `_append_trail_point()` adds breathing room between points to keep the trail lightweight.
+4. `_check_castle_hits()` grows each `Rect2` to approximate projectile radius. Replace with real collision logic once bricks become `RigidBody2D` nodes.
+5. `_reset_after_delay()` uses `await` to pause 1.2 seconds before rebuilding the castle and resetting the projectile, preserving slider values for fast iteration.
 
-## Scene Recipe (`Trebuchet.tscn`)
-1. Create a `Node2D` root named **Trebuchet** and attach `Trebuchet.gd`.
-2. Add world pieces:
-   - `Ground` (`StaticBody2D`) with `SegmentShape2D` from (-10, 0) to (50, 0).
-   - `Frame` (`StaticBody2D`) built from a brown `ColorRect` + `RectangleShape2D` sized roughly 4×6 meters.
-   - `Arm` (`RigidBody2D`) positioned at `(0,3)` with a `RectangleShape2D` sized `Vector2(8.4, 0.3)` and a matching `Sprite2D`/`ColorRect`.
-3. Add joint helpers:
-   - `ArmPivot` (`Node2D`) at `(0,3)`.
-   - `HingeJoint2D` connecting `Frame` (node_a) and `Arm` (node_b); enable angular limits with lower `-135°` and upper `92°` to preload.
-   - `CounterAttach`/`SlingAttach` nodes on the arm at `-1.6` and `6.8` meters respectively.
-4. Create masses:
-   - `Counterweight` (`RigidBody2D`) with `CircleShape2D` (radius 0.8 m) and a gray `Sprite2D`. Pin it via `PinJoint2D` to `CounterAttach`.
-   - `Projectile` (`RigidBody2D`, sleeping=true) with `CircleShape2D` radius 0.4 m, black `Sprite2D`, dust `GPUParticles2D`, and `PinJoint2D` to `SlingAttach`.
-5. UI Layer:
-   - `CanvasLayer` → `Control` (anchors full).
-   - Inside a top-right `VBoxContainer` place `Label` ("Counterweight Mass (kg): 500"), `HSlider` (`min=50`, `max=2000`, `step=50`), and `Button` ("FIRE!"). Rename nodes to `MassLabel`, `MassSlider`, `FireBtn` to match the script.
-6. Target stack: add three `RigidBody2D` boxes at `x=30`. Connect their `body_entered` signal to the projectile for scoring.
+## Immediate TODOs
+- [ ] Swap the placeholder `Polygon2D` projectile for a `RigidBody2D` with a `CircleShape2D`, hook it to an actual trebuchet arm, and copy slider values into rigid body/Joint properties. The README already documents the desired scene hierarchy.
+- [ ] Move UI construction into the scene tree to make it easier for designers to restyle. Keep `SLIDER_META` for logic but let art iterate visually in the editor.
+- [ ] Add audio/visual polish (launch, wind whoosh, impact dust). The script already has hooks where these signals would fire (`_fire`, `_destroy_brick`, `_finalize_shot`).
+- [ ] Transition castle bricks to physics nodes and award score via signals rather than bounding-box checks. This makes destruction more satisfying and aligns with marketing copy.
+- [ ] Provide export presets (Web, Android) and document any special settings (e.g., disable threads for Web) directly in this file for quick deployment.
 
-## Script Outline (`Trebuchet.gd`)
-```gdscript
-extends Node2D
+## Future Ideas
+1. **Leaderboard:** Integrate with a lightweight backend or itch.io scores to make the “high score challenge” global.
+2. **Challenges:** Add scenario presets (e.g., wind storms, heavier castles) and surface them as quick buttons.
+3. **Educational overlay:** Display the computed energy, release speed, and estimated landing distance per shot to underline the “physics transparency” promise.
+4. **Accessibility:** Provide keyboard/gamepad mappings so you can present the build without touching the mouse/trackpad.
 
-@onready var arm          = $Arm
-@onready var counter_rb   = $Counterweight
-@onready var proj_rb      = $Projectile
-@onready var sling_attach = $Arm/SlingAttach
-@onready var mass_label   = $CanvasLayer/UI/VBoxContainer/MassLabel
-@onready var mass_slider  = $CanvasLayer/UI/VBoxContainer/MassSlider
-@onready var fire_btn     = $CanvasLayer/UI/VBoxContainer/FireBtn
-
-const SHORT_LEN := 1.6
-const LONG_LEN  := 6.8
-const DRAW_ANGLE_DEG := 92.0
-const ARM_MASS := 200.0
-const PROJ_MASS := 20.0
-var is_firing := false
-```
-Implementation notes:
-- `_ready()` hooks slider and button signals, sets slider defaults, and calls `_reset()`.
-- `_on_mass_changed()` updates `counter_rb.mass`, refreshes the label with formatted kilograms, and re-arms the trebuchet.
-- `_reset()` freezes bodies, rotates the arm to the draw angle, restores hinge limits to ±2°, reattaches the projectile, and unfreezes bodies (keeping them sleeping until fired).
-- `_fire()` unlocks hinge limits (e.g., lower `=-140°`, upper `=-50°`), clears sleeping flags, and lets gravity do the work.
-- `_physics_process()` watches for `arm.rotation_degrees < 25` with sufficient angular velocity before calling `_release_projectile()`.
-- `_release_projectile()` detaches the sling (`pin_sling.node_b = null`), applies a small impulse for sling boost, and ensures the projectile stays awake.
-
-## Debug & Polishing Tips
-- Set joint bias to ~0.3–0.5 for snappier response. Increase solver iterations if the arm jitters with high masses.
-- Tweak the boost impulse vector `(Vector2(250 * cos(proj.rotation), -100))` to mimic sling behavior.
-- Enable **Visible Collision Shapes** while tuning and disable before exporting.
-- For range comparison, log `proj_rb.global_position.x` upon landing to correlate slider positions to performance.
-
-This dossier keeps the experience approachable: one slider, visible physics, and immediate feedback. Expand from here if you need the full multi-slider simulator described in the README.
+Keep this document up to date as you iterate—treat it as a living playbook for anyone contributing to the project.

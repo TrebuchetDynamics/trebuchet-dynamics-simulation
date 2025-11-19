@@ -63,7 +63,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
     if is_projectile_active:
         projectile_velocity.y += (GRAVITY * PIXELS_PER_METER) * delta
-        projectile_velocity.x += slider_state.wind * WIND_FORCE_SCALE * delta
+        projectile_velocity.x += slider_state["wind"] * WIND_FORCE_SCALE * delta
         projectile_position += projectile_velocity * delta
         if projectile_position.y >= GROUND_Y:
             projectile_position.y = GROUND_Y
@@ -196,21 +196,21 @@ func _append_trail_point() -> void:
 
 func _projectile_start_pos() -> Vector2:
     var base := Vector2(140.0, GROUND_Y - 30.0)
-    base.x += (slider_state.arm - 8.0) * 8.0
-    base.y -= (slider_state.draw - 90.0) * 0.3
+    base.x += (slider_state["arm"] - 8.0) * 8.0
+    base.y -= (slider_state["draw"] - 90.0) * 0.3
     return base
 
 func _estimate_release_velocity_vector() -> Vector2:
-    var total_len := slider_state.arm
+    var total_len := slider_state["arm"]
     var short_len := max(total_len * 0.2, 0.5)
-    var draw_rad := deg_to_rad(slider_state.draw)
+    var draw_rad := deg_to_rad(slider_state["draw"])
     var drop_height := short_len * (1.0 - cos(draw_rad))
-    var energy := slider_state.counter * GRAVITY * drop_height
-    var effective_mass := slider_state.projectile + (total_len * 5.0)
+    var energy := slider_state["counter"] * GRAVITY * drop_height
+    var effective_mass := slider_state["projectile"] + (total_len * 5.0)
     var efficiency := 0.65 + clamp((total_len - 8.0) * 0.02, -0.1, 0.2)
     var tip_speed := sqrt(max(2.0 * energy * efficiency / max(effective_mass, 0.1), 0.0))
     var sling_gain := (total_len - short_len) / total_len
-    var release_angle := deg_to_rad(clamp(slider_state.draw * 0.45, 15.0, 75.0))
+    var release_angle := deg_to_rad(clamp(slider_state["draw"] * 0.45, 15.0, 75.0))
     var px_speed := tip_speed * sling_gain * PIXELS_PER_METER
     return Vector2(cos(release_angle) * px_speed, -sin(release_angle) * px_speed)
 
@@ -226,7 +226,7 @@ func _update_trajectory() -> void:
     var final_x := start.x
     for i in SIM_STEPS:
         vel.y += (GRAVITY * PIXELS_PER_METER) * TRAJECTORY_DT
-        vel.x += slider_state.wind * WIND_FORCE_SCALE * TRAJECTORY_DT
+        vel.x += slider_state["wind"] * WIND_FORCE_SCALE * TRAJECTORY_DT
         pos += vel * TRAJECTORY_DT
         if pos.y >= GROUND_Y:
             pos.y = GROUND_Y
@@ -267,7 +267,7 @@ func _build_castle() -> void:
             brick.color = color
             brick.polygon = _rect_polygon(BRICK_SIZE)
             var offset_x := (col - (BRICK_COLUMNS - 1) / 2.0) * (BRICK_SIZE.x + BRICK_PADDING.x)
-            var pos := base - Vector2(-offset_x, row * (BRICK_SIZE.y + BRICK_PADDING.y))
+            var pos := base + Vector2(offset_x, -row * (BRICK_SIZE.y + BRICK_PADDING.y))
             brick.position = pos
             castle_root.add_child(brick)
             castle_bricks.append({
