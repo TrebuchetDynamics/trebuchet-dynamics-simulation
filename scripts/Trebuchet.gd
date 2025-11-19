@@ -383,11 +383,9 @@ func _update_arm_shape() -> void:
 
 func _update_joint_targets() -> void:
 	if joint_counterweight:
-		joint_counterweight.local_anchor_a = Vector2(0, -arm_short_length_px)
-		joint_counterweight.local_anchor_b = Vector2.ZERO
+		joint_counterweight.position = Vector2(0, -arm_short_length_px)
 	if joint_sling:
-		joint_sling.local_anchor_a = Vector2(0, arm_long_length_px)
-		joint_sling.local_anchor_b = Vector2.ZERO
+		joint_sling.position = Vector2(0, arm_long_length_px)
 		joint_sling.rest_length = sling_length_px
 
 func _cock_trebuchet() -> void:
