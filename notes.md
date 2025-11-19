@@ -1,40 +1,96 @@
-# Dev Notes — Trebuchet Dynamics 2D
+Trebuchet focus only. 🏹
 
-This file tracks the implementation details and next milestones for the Godot 4.x trebuchet demo. The playable slice now mirrors most of the README promises: a slider-driven UI, manual trajectory prediction, scoring, and a scripted castle. Use this as a checklist as you evolve it into a full rigid-body trebuchet.
+# Trebuchet Implementation Notes
 
-## Current Implementation Summary
-- **Scene:** `scenes/Trebuchet.tscn` is intentionally minimal. The script instantiates almost everything (UI, ground, castle) at runtime, so edits happen in code.
-- **Script:** `scripts/Trebuchet.gd` handles UI creation, slider state, projectile integration, trajectory preview, castle generation, scoring, and high-score persistence.
-- **Simulation model:** No physical `RigidBody2D` nodes yet. Launch math estimates sling velocity using counterweight energy and arm ratios, then integrates motion manually with gravity + wind.
-- **Castle:** Built as a configurable grid of `Polygon2D` blocks. Each destroyed block awards points; entire castle resets on a timer after a shot.
+The goal is a single, believable trebuchet inside Godot 4 that mirrors your analytical model (lengths L1–L4, masses m_b/m_c/m_p) while staying easy to tune. Everything below is scoped to the trebuchet itself—scene layout, rigid bodies, joints, and the release script.
 
-### Key Constants (tune as needed)
-| Const | Default | Effect |
-| --- | --- | --- |
-| `PIXELS_PER_METER` | 6 | Converts physics math to screen coordinates. Increase for tighter scene. |
-| `GROUND_Y` | 520 | Y position for collision floor. Move up/down for different horizons. |
-| `SIM_STEPS` | 220 | Number of Euler steps used for trajectory preview. |
-| `SCORE_FILE` | `user://scores.cfg` | High score persistence path. |
-| `BRICK_COLUMNS / ROWS` | 4 × 3 | Castle grid dimensions. |
+## Objectives
 
-## Code Walkthrough
-1. `_setup_ui()` clears the editor-authored `Control`, adds a `PanelContainer`, and generates sliders using `SLIDER_META`. Keep metadata in sync when adding sliders.
-2. `_update_trajectory()` is shared by the preview and “real” launch. Any physics tuning (wind, gravity scale, release angle logic) must stay identical to avoid mismatch between preview and actual shot.
-3. `_fire()` freezes slider inputs and seeds projectile state. `_append_trail_point()` adds breathing room between points to keep the trail lightweight.
-4. `_check_castle_hits()` grows each `Rect2` to approximate projectile radius. Replace with real collision logic once bricks become `RigidBody2D` nodes.
-5. `_reset_after_delay()` uses `await` to pause 1.2 seconds before rebuilding the castle and resetting the projectile, preserving slider values for fast iteration.
+- Build the trebuchet completely out of 2D rigid bodies + joints so Godot handles forces/torque.
+- Make cock → fire → automatic release a deterministic sequence.
+- Keep parameters (lengths, masses, gravity) close to the math diagrams so measured data can plug in.
 
-## Immediate TODOs
-- [ ] Swap the placeholder `Polygon2D` projectile for a `RigidBody2D` with a `CircleShape2D`, hook it to an actual trebuchet arm, and copy slider values into rigid body/Joint properties. The README already documents the desired scene hierarchy.
-- [ ] Move UI construction into the scene tree to make it easier for designers to restyle. Keep `SLIDER_META` for logic but let art iterate visually in the editor.
-- [ ] Add audio/visual polish (launch, wind whoosh, impact dust). The script already has hooks where these signals would fire (`_fire`, `_destroy_brick`, `_finalize_shot`).
-- [ ] Transition castle bricks to physics nodes and award score via signals rather than bounding-box checks. This makes destruction more satisfying and aligns with marketing copy.
-- [ ] Provide export presets (Web, Android) and document any special settings (e.g., disable threads for Web) directly in this file for quick deployment.
+## Scene tree (single trebuchet)
 
-## Future Ideas
-1. **Leaderboard:** Integrate with a lightweight backend or itch.io scores to make the “high score challenge” global.
-2. **Challenges:** Add scenario presets (e.g., wind storms, heavier castles) and surface them as quick buttons.
-3. **Educational overlay:** Display the computed energy, release speed, and estimated landing distance per shot to underline the “physics transparency” promise.
-4. **Accessibility:** Provide keyboard/gamepad mappings so you can present the build without touching the mouse/trackpad.
+```text
+TrebuchetRig (Node2D)
+├─ Frame (StaticBody2D)
+│   └─ CollisionShape2D   # uprights/ground hitbox
+├─ Pivot (StaticBody2D)
+├─ Arm (RigidBody2D)
+│   └─ CollisionShape2D   # center on pivot for clean inertia
+├─ Counterweight (RigidBody2D)
+│   └─ CollisionShape2D
+├─ Projectile (RigidBody2D)
+│   └─ CollisionShape2D (Circle)
+├─ JointPivot (PinJoint2D)            # Pivot ↔ Arm
+├─ JointCounterweight (PinJoint2D)    # Arm short-end ↔ Counterweight
+├─ JointSling (DistanceJoint2D)       # Arm long-end ↔ Projectile (removed at release)
+└─ Ground (StaticBody2D)              # floor collider if needed
+```
 
-Keep this document up to date as you iterate—treat it as a living playbook for anyone contributing to the project.
+Everything lives under one Node2D so transforming or duplicating the entire rig stays trivial.
+
+## Component details
+
+### Frame + Pivot
+- `Frame` is only there for visuals/collisions.
+- `Pivot` is a `StaticBody2D` positioned at the rotation point; `JointPivot` references it and the arm.
+
+### Arm
+- `RigidBody2D` with `mode = Rigid` and `gravity_scale = 1`.
+- `CollisionShape2D` centered on the pivot gives symmetric inertia so you can reason about θ easily.
+- Mass should track beam mass `m_b`; offset the collision shape if you need an off-center CoM.
+
+### Counterweight
+- Separate `RigidBody2D` jointed to the short arm end with `PinJoint2D` for a free-swinging hinged weight.
+- Use `mass = m_c` (or scaled) so gravity torque matches expectation.
+- If you want a boxed weight rigidly fixed to the arm, skip the joint and fake mass by shifting the arm’s shape.
+
+### Sling + Projectile
+- Quick version: `DistanceJoint2D` connecting arm tip to projectile with `length = L3 * pixels_per_meter`.
+- Projectile is a `RigidBody2D` sphere (`CircleShape2D`), `mass = m_p`.
+- Draw rope visually using a `Line2D` between the sling anchor and projectile for readability.
+
+## Simulation flow
+
+1. **Cock / hold:** Rotate the arm into the armed angle (e.g., -120°). Either set `sleeping = true` on every body or add a temporary “LatchJoint” from arm tip to ground.
+2. **Fire trigger:** Wake the bodies, restore `gravity_scale = 1`, remove any latch, and mark the rig `armed = true`.
+3. **Automatic release:** While `armed`, monitor the arm rotation; once it crosses the release angle, delete `JointSling`.
+
+### Reference logic
+
+```gdscript
+const RELEASE_ANGLE_DEG := 90.0
+var armed := false
+var released := false
+
+func fire() -> void:
+    armed = true
+    released = false
+    for body in [arm, counterweight, projectile]:
+        body.sleeping = false
+        body.gravity_scale = 1.0
+
+func _physics_process(_delta: float) -> void:
+    if armed and not released and rad2deg(arm.rotation) >= -RELEASE_ANGLE_DEG:
+        released = true
+        if is_instance_valid(joint_sling):
+            joint_sling.queue_free()
+```
+
+Tune the comparison to match your coordinate system (arm might rotate the opposite direction depending on sprite orientation).
+
+## Parameter mapping to math model
+
+- Decide `PIXELS_PER_METER` once. Use it to convert L1–L4 lengths directly into collision shapes and joint distances.
+- Apply mass ratios (`m_b`, `m_c`, `m_p`) straight to `RigidBody2D.mass`; you can multiply all three by a constant if Godot prefers different scales, but keep the proportions identical.
+- Make sure project gravity matches whatever units you assume (default 98 px/s² ≈ 1 m/s² if 1 px = 1 cm). Override in Project Settings for cleaner conversions.
+
+## Debug + iteration ideas
+
+- Print or draw the arm angle in degrees so you can confirm the release threshold visually.
+- Keep your analytic `_update_trajectory()` routine as an overlay: feed it the current θ, sling length, etc., draw a predicted dotted arc, and compare to the rigid-body shot for calibration.
+- When duplicate trebuchets are needed, instance this rig and override only the numeric parameters (length, mass, release angle) per copy.
+
+That’s the entire trebuchet story—frame, arm, counterweight, sling, and release—ready to drop straight into the Godot scene.
