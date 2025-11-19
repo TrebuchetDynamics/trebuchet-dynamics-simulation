@@ -5,32 +5,32 @@
 [node name="Trebuchet" type="Node2D"]
 script = ExtResource("1_j3ybt")
 
-[node name="Simulation" type="Node2D" parent="Trebuchet"]
+[node name="Simulation" type="Node2D" parent="."]
 
-[node name="GroundRoot" type="Node2D" parent="Trebuchet/Simulation"]
+[node name="GroundRoot" type="Node2D" parent="Simulation"]
 
-[node name="CastleRoot" type="Node2D" parent="Trebuchet/Simulation"]
+[node name="CastleRoot" type="Node2D" parent="Simulation"]
 
-[node name="TrajectoryLine" type="Line2D" parent="Trebuchet/Simulation"]
+[node name="TrajectoryLine" type="Line2D" parent="Simulation"]
 default_color = Color(1, 0.882353, 0.133333, 1)
 width = 3.0
 antialiased = true
 
-[node name="ProjectileTrail" type="Line2D" parent="Trebuchet/Simulation"]
+[node name="ProjectileTrail" type="Line2D" parent="Simulation"]
 default_color = Color(1, 1, 1, 0.4)
 width = 2.0
 antialiased = true
 
-[node name="Projectile" type="Node2D" parent="Trebuchet/Simulation"]
+[node name="Projectile" type="Node2D" parent="Simulation"]
 position = Vector2(120, 480)
 
-[node name="ProjectileShape" type="Polygon2D" parent="Trebuchet/Simulation/Projectile"]
+[node name="ProjectileShape" type="Polygon2D" parent="Simulation/Projectile"]
 color = Color(0.117647, 0.117647, 0.117647, 1)
 polygon = PackedVector2Array(0, -10, 7.07107, -7.07107, 10, 0, 7.07107, 7.07107, 0, 10, -7.07107, 7.07107, -10, 0, -7.07107, -7.07107)
 
-[node name="CanvasLayer" type="CanvasLayer" parent="Trebuchet"]
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
 
-[node name="UI" type="Control" parent="Trebuchet/CanvasLayer"]
+[node name="UI" type="Control" parent="CanvasLayer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_right = 0.0

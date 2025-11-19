@@ -11,6 +11,16 @@ const BRICK_COLUMNS := 4
 const BRICK_ROWS := 3
 const BRICK_SIZE := Vector2(48, 24)
 const BRICK_PADDING := Vector2(8, 6)
+const PROJECTILE_POINTS := [
+	Vector2(0, -10),
+	Vector2(7.07107, -7.07107),
+	Vector2(10, 0),
+	Vector2(7.07107, 7.07107),
+	Vector2(0, 10),
+	Vector2(-7.07107, 7.07107),
+	Vector2(-10, 0),
+	Vector2(-7.07107, -7.07107),
+]
 const SCORE_FILE := "user://scores.cfg"
 
 var slider_state := {
@@ -44,12 +54,12 @@ var high_score := 0
 
 var castle_bricks: Array = []
 
-@onready var ground_root: Node2D = $Simulation/GroundRoot
-@onready var castle_root: Node2D = $Simulation/CastleRoot
-@onready var projectile_node: Node2D = $Simulation/Projectile
-@onready var projectile_trail: Line2D = $Simulation/ProjectileTrail
-@onready var trajectory_line: Line2D = $Simulation/TrajectoryLine
-@onready var ui_root: Control = _get_or_create_ui_root()
+var ground_root: Node2D
+var castle_root: Node2D
+var projectile_node: Node2D
+var projectile_trail: Line2D
+var trajectory_line: Line2D
+var ui_root: Control
 
 func _get_or_create_ui_root() -> Control:
 	var canvas_layer := get_node_or_null("CanvasLayer") as CanvasLayer
@@ -68,7 +78,53 @@ func _get_or_create_ui_root() -> Control:
 		canvas_layer.add_child(ui)
 	return ui
 
+func _ensure_simulation_tree() -> void:
+	var simulation := get_node_or_null("Simulation") as Node2D
+	if not simulation:
+		simulation = Node2D.new()
+		simulation.name = "Simulation"
+		add_child(simulation)
+	ground_root = _ensure_node2d(simulation, "GroundRoot")
+	castle_root = _ensure_node2d(simulation, "CastleRoot")
+	projectile_node = _ensure_node2d(simulation, "Projectile", func(node: Node2D) -> void:
+		node.position = Vector2(120, 480)
+	)
+	projectile_trail = _ensure_line2d(simulation, "ProjectileTrail", Color(1, 1, 1, 0.4), 2.0)
+	trajectory_line = _ensure_line2d(simulation, "TrajectoryLine", Color(1, 0.882353, 0.133333, 1), 3.0)
+	var projectile_shape := projectile_node.get_node_or_null("ProjectileShape") as Polygon2D
+	if not projectile_shape:
+		projectile_shape = Polygon2D.new()
+		projectile_shape.name = "ProjectileShape"
+		projectile_shape.color = Color(0.117647, 0.117647, 0.117647, 1)
+		projectile_shape.polygon = _projectile_polygon()
+		projectile_node.add_child(projectile_shape)
+
+func _ensure_node2d(parent: Node, name: String, initializer: Callable = Callable()) -> Node2D:
+	var node := parent.get_node_or_null(name) as Node2D
+	if node:
+		return node
+	node = Node2D.new()
+	node.name = name
+	parent.add_child(node)
+	if not initializer.is_null():
+		initializer.call(node)
+	return node
+
+func _ensure_line2d(parent: Node, name: String, color: Color, width: float) -> Line2D:
+	var line := parent.get_node_or_null(name) as Line2D
+	if line:
+		return line
+	line = Line2D.new()
+	line.name = name
+	line.default_color = color
+	line.width = width
+	line.antialiased = true
+	parent.add_child(line)
+	return line
+
 func _ready() -> void:
+	_ensure_simulation_tree()
+	ui_root = _get_or_create_ui_root()
 	_build_ground()
 	_build_castle()
 	_setup_ui()
@@ -302,6 +358,12 @@ func _rect_polygon(size: Vector2) -> PackedVector2Array:
 	polygon.append(Vector2(half.x, -half.y))
 	polygon.append(Vector2(half.x, half.y))
 	polygon.append(Vector2(-half.x, half.y))
+	return polygon
+
+func _projectile_polygon() -> PackedVector2Array:
+	var polygon := PackedVector2Array()
+	for point in PROJECTILE_POINTS:
+		polygon.append(point)
 	return polygon
 
 func _reset_projectile() -> void:
