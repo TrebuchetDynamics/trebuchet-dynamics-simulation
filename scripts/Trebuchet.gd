@@ -37,6 +37,7 @@ var slider_refs: Dictionary = {}
 var range_label: Label
 var score_label: Label
 var fire_button: Button
+var reset_button: Button
 
 var projectile_position: Vector2 = Vector2.ZERO
 var projectile_velocity: Vector2 = Vector2.ZERO
@@ -142,21 +143,29 @@ func _setup_ui() -> void:
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
 	panel.anchor_top = 0.0
-	panel.anchor_bottom = 0.0
-	panel.offset_left = -360.0
-	panel.offset_right = -20.0
-	panel.offset_top = 24.0
-	panel.offset_bottom = 0.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -340.0
+	panel.offset_right = -10.0
+	panel.offset_top = 10.0
+	panel.offset_bottom = -10.0
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "ScrollContainer"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(scroll)
+
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"
-	vbox.custom_minimum_size = Vector2(320, 0)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-	panel.add_child(vbox)
+	scroll.add_child(vbox)
 	ui_root.add_child(panel)
 
 	var title := Label.new()
 	title.text = "Trebuchet Controls"
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 	vbox.add_child(_make_separator())
 
@@ -170,11 +179,21 @@ func _setup_ui() -> void:
 	range_label.text = "Est. Range: 0 m"
 	vbox.add_child(range_label)
 
+	var button_container := HBoxContainer.new()
+	button_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(button_container)
+
 	fire_button = Button.new()
 	fire_button.text = "FIRE!"
 	fire_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fire_button.pressed.connect(_fire)
-	vbox.add_child(fire_button)
+	button_container.add_child(fire_button)
+
+	reset_button = Button.new()
+	reset_button.text = "RESET"
+	reset_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reset_button.pressed.connect(_manual_reset)
+	button_container.add_child(reset_button)
 
 	score_label = Label.new()
 	score_label.name = "ScoreLabel"
@@ -183,8 +202,9 @@ func _setup_ui() -> void:
 
 	var hint := Label.new()
 	hint.text = "Adjust sliders, watch preview, then launch."
-	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_font_size_override("font_size", 11)
 	hint.modulate = Color(0.8, 0.8, 0.8, 0.8)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(hint)
 
 func _create_slider(vbox: VBoxContainer, key: String) -> void:
@@ -249,6 +269,7 @@ func _fire() -> void:
 	score = 0
 	_update_score_label()
 	fire_button.disabled = true
+	reset_button.disabled = true
 
 func _append_trail_point() -> void:
 	if projectile_trail.get_point_count() == 0:
@@ -501,6 +522,7 @@ func _finalize_shot() -> void:
 		return
 	is_projectile_active = false
 	fire_button.disabled = false
+	reset_button.disabled = false
 	_set_bodies_frozen(true)
 	projectile_body.sleeping = true
 	var distance_m: float = max((projectile_position.x - projectile_start.x) / PIXELS_PER_METER, 0.0)
@@ -541,3 +563,15 @@ func _save_high_score() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("scores", "high", high_score)
 	cfg.save(SCORE_FILE)
+
+func _manual_reset() -> void:
+	if is_projectile_active:
+		is_projectile_active = false
+		_set_bodies_frozen(true)
+	_reset_castle()
+	score = 0
+	_update_score_label()
+	_reset_projectile_state()
+	_update_trajectory()
+	fire_button.disabled = false
+	reset_button.disabled = false
