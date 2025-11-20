@@ -1,12 +1,14 @@
 extends Node2D
 
-const PIXELS_PER_METER := 6.0
-const RIG_SCALE := 3.0
+const EFFECTIVE_PPM := 18.0 # Unified pixels-per-meter after rig scaling
+const RIG_SCALE := 1.0
 const GROUND_Y := 520.0
+const PROJ_RADIUS := 12.0
+const GROUND_CHECK_Y := GROUND_Y + PROJ_RADIUS
 const GRAVITY := 9.81
-const WIND_FORCE_SCALE := 3.2
-const SLING_STIFFNESS := 420.0
-const SLING_DAMPING := 12.0
+const WIND_FORCE_SCALE := 32.0
+const SLING_STIFFNESS := 150.0
+const SLING_DAMPING := 20.0
 const SIM_STEPS := 220
 const TRAJECTORY_DT := 0.03
 const TRAIL_POINT_DISTANCE := 6.0
@@ -62,6 +64,7 @@ var arm_body: RigidBody2D
 var arm_shape: CollisionShape2D
 var counterweight_body: RigidBody2D
 var projectile_body: RigidBody2D
+var joint_pivot: PinJoint2D
 var joint_counterweight: PinJoint2D
 var joint_sling: DampedSpringJoint2D = null
 var sling_line: Line2D
@@ -74,10 +77,17 @@ var armed: bool = false
 var released: bool = false
 var sling_attached: bool = true
 
+var physics_gravity: float
+var grav_scale: float
+var effective_px_scale: float
+
 func _ready() -> void:
+	physics_gravity = ProjectSettings.get_setting("physics/2d/default_gravity") as float
+	effective_px_scale = EFFECTIVE_PPM
+	grav_scale = (GRAVITY * EFFECTIVE_PPM) / physics_gravity
 	_cache_scene_refs()
 	_build_ground()
-	# _build_castle()
+	_build_castle()
 	_setup_ui()
 	_load_high_score()
 	_configure_rig_from_sliders()
@@ -96,25 +106,37 @@ func _cache_scene_refs() -> void:
 	arm_shape = arm_body.get_node("CollisionShape2D") as CollisionShape2D
 	counterweight_body = trebuchet_rig.get_node("Counterweight") as RigidBody2D
 	projectile_body = trebuchet_rig.get_node("Projectile") as RigidBody2D
+	joint_pivot = trebuchet_rig.get_node("JointPivot") as PinJoint2D
 	joint_counterweight = trebuchet_rig.get_node("JointCounterweight") as PinJoint2D
 	joint_sling = trebuchet_rig.get_node_or_null("JointSling") as DampedSpringJoint2D
 	sling_line = trebuchet_rig.get_node("SlingLine") as Line2D
 	ui_root = _get_or_create_ui_root()
+	projectile_body.continuous_cd = RigidBody2D.CCD_MODE_CAST_RAY
+	arm_body.can_sleep = false
+	counterweight_body.can_sleep = false
+	projectile_body.can_sleep = false
+	if joint_pivot:
+		joint_pivot.disable_collision = true
+		joint_pivot.softness = 0.0
+	if joint_counterweight:
+		joint_counterweight.softness = 0.0
+	arm_body.gravity_scale = grav_scale
+	counterweight_body.gravity_scale = grav_scale
+	projectile_body.gravity_scale = grav_scale
 
 func _physics_process(delta: float) -> void:
 	if not projectile_body:
 		return
 	var global_pos: Vector2 = projectile_body.global_position
-	var local_pos: Vector2 = _to_simulation(global_pos)
-	projectile_velocity = (local_pos - projectile_position) / max(delta, 0.0001)
-	projectile_position = local_pos
+	projectile_position = _to_simulation(global_pos)
+	projectile_velocity = projectile_body.linear_velocity
 	if is_projectile_active:
 		_check_release_condition()
 		_append_trail_point()
 		_check_castle_hits()
 		if released:
 			projectile_body.apply_central_force(Vector2(slider_state["wind"] * WIND_FORCE_SCALE, 0.0))
-		if projectile_position.y >= GROUND_Y:
+		if projectile_position.y >= GROUND_CHECK_Y:
 			_finalize_shot()
 	else:
 		projectile_position = _projectile_start_pos()
@@ -307,29 +329,31 @@ func _estimate_release_velocity_vector() -> Vector2:
 	var tip_speed: float = sqrt(max(2.0 * energy * efficiency / max(effective_mass, 0.1), 0.0))
 	var sling_gain: float = (total_len - short_len) / total_len
 	var release_angle: float = deg_to_rad(clamp(draw_deg * 0.45, 15.0, 75.0))
-	var px_speed: float = tip_speed * sling_gain * PIXELS_PER_METER
+	var px_speed: float = tip_speed * sling_gain * EFFECTIVE_PPM
 	return Vector2(cos(release_angle) * px_speed, -sin(release_angle) * px_speed)
 
 func _update_trajectory() -> void:
 	var start := _projectile_start_pos()
 	var vel := _estimate_release_velocity_vector()
 	var pos := start
-	var points := PackedVector2Array()
-	points.append(start)
+	var points := PackedVector2Array([start])
 	var final_x: float = start.x
+	var proj_mass: float = float(slider_state["projectile"])
+	var wind_force: float = float(slider_state["wind"]) * WIND_FORCE_SCALE
+	var wind_accel: float = wind_force / proj_mass if proj_mass > 0 else 0.0
 	for _i in range(SIM_STEPS):
-		vel.y += (GRAVITY * PIXELS_PER_METER) * TRAJECTORY_DT
-		vel.x += slider_state["wind"] * WIND_FORCE_SCALE * TRAJECTORY_DT
+		vel.y += (GRAVITY * EFFECTIVE_PPM) * TRAJECTORY_DT
+		vel.x += wind_accel * TRAJECTORY_DT
 		pos += vel * TRAJECTORY_DT
-		if pos.y >= GROUND_Y:
-			pos.y = GROUND_Y
+		if pos.y >= GROUND_CHECK_Y:
+			pos.y = GROUND_CHECK_Y
 			points.append(pos)
 			final_x = pos.x
 			break
 		points.append(pos)
 		final_x = pos.x
 	trajectory_line.points = points
-	var meters: float = max((final_x - start.x) / PIXELS_PER_METER, 0.0)
+	var meters: float = max((final_x - start.x) / EFFECTIVE_PPM, 0.0)
 	if range_label:
 		range_label.text = "Est. Range: %.1f m" % meters
 
@@ -390,7 +414,7 @@ func _configure_rig_from_sliders() -> void:
 	var arm_total_m: float = float(slider_state["arm"])
 	var short_m: float = float(clamp(arm_total_m * 0.28, MIN_SHORT_METERS, max(arm_total_m - 0.5, MIN_SHORT_METERS)))
 	var long_m: float = float(max(arm_total_m - short_m, 1.5))
-	var px_scale: float = PIXELS_PER_METER * RIG_SCALE
+	var px_scale: float = effective_px_scale
 	arm_short_length_px = short_m * px_scale
 	arm_long_length_px = long_m * px_scale
 	sling_length_px = clamp(long_m * 0.9 * px_scale, 60.0, 280.0)
@@ -403,6 +427,9 @@ func _configure_rig_from_sliders() -> void:
 		arm_body.mass = clamp(arm_total_m * 4.0, 8.0, 200.0)
 	_update_arm_shape()
 	_update_joint_targets()
+	arm_body.gravity_scale = grav_scale
+	counterweight_body.gravity_scale = grav_scale
+	projectile_body.gravity_scale = grav_scale
 
 func _update_arm_shape() -> void:
 	if not arm_shape:
@@ -416,12 +443,16 @@ func _update_joint_targets() -> void:
 	if joint_counterweight and arm_body and trebuchet_rig:
 		var hinge_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
 		joint_counterweight.position = trebuchet_rig.to_local(hinge_global)
+		joint_counterweight.disable_collision = true
 	if joint_sling and arm_body and trebuchet_rig:
-		var sling_anchor_global := arm_body.to_global(Vector2(0, arm_long_length_px))
+		var sling_anchor_global := _arm_tip_global()
+		joint_sling.node_a = NodePath("../Arm")
+		joint_sling.node_b = NodePath("../Projectile")
 		joint_sling.position = trebuchet_rig.to_local(sling_anchor_global)
 		joint_sling.rest_length = sling_length_px
 		joint_sling.stiffness = SLING_STIFFNESS
 		joint_sling.damping = SLING_DAMPING
+		joint_sling.disable_collision = true
 
 func _cock_trebuchet() -> void:
 	if not arm_body or not projectile_body:
@@ -429,6 +460,9 @@ func _cock_trebuchet() -> void:
 	_ensure_sling_joint()
 	var cock_angle: float = -float(clamp(slider_state["draw"], 40.0, 120.0))
 	_set_bodies_frozen(true)
+	arm_body.can_sleep = false
+	counterweight_body.can_sleep = false
+	projectile_body.can_sleep = false
 	arm_body.rotation_degrees = cock_angle
 	arm_body.linear_velocity = Vector2.ZERO
 	arm_body.angular_velocity = 0.0
@@ -481,7 +515,7 @@ func _check_release_condition() -> void:
 	if released or not armed:
 		return
 	var tip_vector := (_arm_tip_global() - arm_body.global_position).normalized()
-	var angle: float = rad_to_deg(Vector2.UP.angle_to(tip_vector))
+	var angle: float = abs(rad_to_deg(Vector2.RIGHT.angle_to(tip_vector)))
 	if angle <= release_angle_tolerance_deg:
 		_release_projectile()
 
@@ -514,7 +548,7 @@ func _reset_projectile_state() -> void:
 	last_trail_point = projectile_position
 
 func _check_castle_hits() -> void:
-	var radius: float = 12.0
+	var proj_global := projectile_body.global_position
 	for brick in castle_bricks:
 		if brick["destroyed"]:
 			continue
@@ -522,7 +556,7 @@ func _check_castle_hits() -> void:
 		var brick_size: Vector2 = brick["size"]
 		var half: Vector2 = brick_size * 0.5
 		var rect := Rect2(node.global_position - half, brick_size)
-		if rect.grow(radius).has_point(projectile_position):
+		if rect.grow(PROJ_RADIUS).has_point(proj_global):
 			_destroy_brick(brick)
 
 func _destroy_brick(brick: Dictionary) -> void:
@@ -536,11 +570,15 @@ func _finalize_shot() -> void:
 	if not is_projectile_active:
 		return
 	is_projectile_active = false
+	armed = false
 	fire_button.disabled = false
 	reset_button.disabled = false
 	_set_bodies_frozen(true)
 	projectile_body.sleeping = true
-	var distance_m: float = max((projectile_position.x - projectile_start.x) / PIXELS_PER_METER, 0.0)
+	arm_body.can_sleep = true
+	counterweight_body.can_sleep = true
+	projectile_body.can_sleep = true
+	var distance_m: float = max((projectile_position.x - projectile_start.x) / EFFECTIVE_PPM, 0.0)
 	score += int(distance_m)
 	_update_score_label()
 	if score > high_score:

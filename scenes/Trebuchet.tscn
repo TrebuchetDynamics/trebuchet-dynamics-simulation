@@ -15,7 +15,7 @@ size = Vector2(14, 220)
 size = Vector2(48, 48)
 
 [sub_resource type="CircleShape2D" id="CircleProjectile"]
-radius = 10.0
+radius = 12.0
 
 [sub_resource type="RectangleShape2D" id="RectGround"]
 size = Vector2(1920, 40)
@@ -106,7 +106,6 @@ shape = SubResource("CircleProjectile")
 position = Vector2(0, -120)
 node_a = NodePath("../Pivot")
 node_b = NodePath("../Arm")
-bias = 0.9
 disable_collision = true
 
 [node name="JointCounterweight" type="PinJoint2D" parent="Simulation/TrebuchetRig"]

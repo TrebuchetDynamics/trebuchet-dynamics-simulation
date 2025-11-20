@@ -1,5 +1,12 @@
 # Trebuchet Simulation - Fixes Applied
 
+## Latest Adjustments
+- Unified scaling with `EFFECTIVE_PPM = 18` and gravity scaling so trajectory preview matches in-game motion.
+- Sling anchors to the arm tip, collision is disabled on the joint, and length is clamped each physics tick to prevent stretching/jitter.
+- Removed the invalid PinJoint `bias` property; joints now rely on script-set softness and stay aligned to the moving pivots.
+- Projectile collider radius set to 12 px to match the ground/castle hit checks.
+- Castle build is enabled again; reset stays available while firing; wind force and trajectory use per-mass acceleration.
+
 ## Issues Found and Fixed
 
 ### 1. **Missing Camera**
@@ -35,7 +42,7 @@
 
 ### 7. **Missing Projectile Collider Radius**
 - **Problem**: `CircleShape2D` on the projectile had no radius set, leaving it effectively without a collision shape.
-- **Fix**: Set the projectile collider radius to 10 px to match the visual sprite and enable proper physics contacts.
+- **Fix**: Set the projectile collider radius to 12 px to match the hit checks and enable proper physics contacts.
 
 ### 8. **Detached Rigid Bodies (Broken Joint Paths)**
 - **Problem**: Pin/DampedSpring joints referenced child paths (`"Pivot"`, `"Arm"`, etc.) instead of sibling paths, so the physics constraint bodies were never found and everything fell apart.
@@ -51,7 +58,7 @@
 
 ### 11. **Sling Not Anchored / Stretching + Arm Jitter**
 - **Problem**: The sling joint was too soft and wasn’t following the arm tip, so the rope stretched and the arm jittered.
-- **Fix**: Retuned the sling as a `DampedSpringJoint2D` with higher stiffness/damping, anchors driven from the arm tip each reset so it stays taut and attached even as the rig rotates.
+- **Fix**: The sling now anchors to the arm tip every reset and its length is clamped during physics to stay attached and taut while keeping collisions disabled on the joint.
 
 ### 12. **Arm Binding at the Fulcrum**
 - **Problem**: The arm’s collider was bumping into the pivot collider, so it couldn’t rotate freely around the fulcrum.
@@ -59,7 +66,7 @@
 
 ### 13. **Sling Still Stretching**
 - **Problem**: The soft spring sling was elongating under load, so the rope length wasn’t preserved and the projectile lagged behind the arm tip.
-- **Fix**: Cranked up sling stiffness/damping (both in-scene and at runtime) so the DampedSpring behaves much closer to a fixed-length rope while keeping the system stable.
+- **Fix**: Enforced the sling length each physics tick (instead of relying solely on stiffness) so the rope stays fixed-length without introducing instability.
 
 ### 14. **Frame Collider Blocking Shots**
 - **Problem**: The vertical frame column still had an active collider, so the projectile could hit it even though it’s just a visual.
