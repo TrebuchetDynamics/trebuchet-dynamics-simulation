@@ -5,6 +5,8 @@ const RIG_SCALE := 3.0
 const GROUND_Y := 520.0
 const GRAVITY := 9.81
 const WIND_FORCE_SCALE := 3.2
+const SLING_STIFFNESS := 420.0
+const SLING_DAMPING := 12.0
 const SIM_STEPS := 220
 const TRAJECTORY_DT := 0.03
 const TRAIL_POINT_DISTANCE := 6.0
@@ -128,11 +130,17 @@ func _get_or_create_ui_root() -> Control:
 	if not ui:
 		ui = Control.new()
 		ui.name = "UI"
-		ui.anchor_right = 1.0
-		ui.anchor_bottom = 1.0
-		ui.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		ui.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		canvas_layer.add_child(ui)
+	ui.anchor_left = 0.0
+	ui.anchor_top = 0.0
+	ui.anchor_right = 1.0
+	ui.anchor_bottom = 1.0
+	ui.offset_left = 0.0
+	ui.offset_top = 0.0
+	ui.offset_right = 0.0
+	ui.offset_bottom = 0.0
+	ui.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	return ui
 
 func _setup_ui() -> void:
@@ -269,7 +277,6 @@ func _fire() -> void:
 	score = 0
 	_update_score_label()
 	fire_button.disabled = true
-	reset_button.disabled = true
 
 func _append_trail_point() -> void:
 	if projectile_trail.get_point_count() == 0:
@@ -310,7 +317,7 @@ func _update_trajectory() -> void:
 	var points := PackedVector2Array()
 	points.append(start)
 	var final_x: float = start.x
-	for i in SIM_STEPS:
+	for _i in range(SIM_STEPS):
 		vel.y += (GRAVITY * PIXELS_PER_METER) * TRAJECTORY_DT
 		vel.x += slider_state["wind"] * WIND_FORCE_SCALE * TRAJECTORY_DT
 		pos += vel * TRAJECTORY_DT
@@ -331,13 +338,16 @@ func _build_ground() -> void:
 		return
 	for child in ground_root.get_children():
 		child.queue_free()
+	ground_root.z_index = -10
 	var sky := Polygon2D.new()
+	sky.z_index = -20
 	sky.color = Color(0.18, 0.28, 0.42)
 	sky.polygon = _rect_polygon(Vector2(1920, 960))
 	sky.position = Vector2(960, 360)
 	ground_root.add_child(sky)
 
 	var ground := Polygon2D.new()
+	ground.z_index = -15
 	ground.color = Color(0.32, 0.26, 0.2)
 	ground.polygon = _rect_polygon(Vector2(1920, 120))
 	ground.position = Vector2(960, GROUND_Y + 40)
@@ -403,11 +413,15 @@ func _update_arm_shape() -> void:
 	arm_shape.position.y = (arm_long_length_px - arm_short_length_px) * 0.5
 
 func _update_joint_targets() -> void:
-	if joint_counterweight:
-		joint_counterweight.position = Vector2(0, -arm_short_length_px)
-	if joint_sling:
-		joint_sling.position = Vector2(0, arm_long_length_px)
+	if joint_counterweight and arm_body and trebuchet_rig:
+		var hinge_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
+		joint_counterweight.position = trebuchet_rig.to_local(hinge_global)
+	if joint_sling and arm_body and trebuchet_rig:
+		var sling_anchor_global := arm_body.to_global(Vector2(0, arm_long_length_px))
+		joint_sling.position = trebuchet_rig.to_local(sling_anchor_global)
 		joint_sling.rest_length = sling_length_px
+		joint_sling.stiffness = SLING_STIFFNESS
+		joint_sling.damping = SLING_DAMPING
 
 func _cock_trebuchet() -> void:
 	if not arm_body or not projectile_body:
@@ -428,6 +442,7 @@ func _cock_trebuchet() -> void:
 	projectile_body.rotation = 0.0
 	projectile_body.linear_velocity = Vector2.ZERO
 	projectile_body.angular_velocity = 0.0
+	_update_joint_targets()
 	sling_attached = true
 	released = false
 	armed = false
@@ -447,11 +462,11 @@ func _ensure_sling_joint() -> void:
 		return
 	joint_sling = DampedSpringJoint2D.new()
 	joint_sling.name = "JointSling"
-	joint_sling.node_a = NodePath("Arm")
-	joint_sling.node_b = NodePath("Projectile")
+	joint_sling.node_a = NodePath("../Arm")
+	joint_sling.node_b = NodePath("../Projectile")
 	joint_sling.disable_collision = true
-	joint_sling.stiffness = 5.0
-	joint_sling.damping = 0.05
+	joint_sling.stiffness = SLING_STIFFNESS
+	joint_sling.damping = SLING_DAMPING
 	trebuchet_rig.add_child(joint_sling)
 	_update_joint_targets()
 

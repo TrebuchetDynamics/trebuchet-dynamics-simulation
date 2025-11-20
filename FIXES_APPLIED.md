@@ -29,6 +29,42 @@
 - **Problem**: TrebuchetRig was at x=180 (too far left)
 - **Fix**: Moved to x=300 for better visibility while leaving room for projectile flight
 
+### 6. **Trajectory Loop Crash**
+- **Problem**: `_update_trajectory()` used `for i in SIM_STEPS:` which is invalid in GDScript and prevents the project from running.
+- **Fix**: Switched to `for _i in range(SIM_STEPS):` so the preview loop executes correctly.
+
+### 7. **Missing Projectile Collider Radius**
+- **Problem**: `CircleShape2D` on the projectile had no radius set, leaving it effectively without a collision shape.
+- **Fix**: Set the projectile collider radius to 10 px to match the visual sprite and enable proper physics contacts.
+
+### 8. **Detached Rigid Bodies (Broken Joint Paths)**
+- **Problem**: Pin/DampedSpring joints referenced child paths (`"Pivot"`, `"Arm"`, etc.) instead of sibling paths, so the physics constraint bodies were never found and everything fell apart.
+- **Fix**: Pointed joint `node_a/node_b` paths to siblings (`"../Pivot"`, `"../Arm"`, `"../Counterweight"`, `"../Projectile"`) and mirrored that in the scripted sling creation so all rigid bodies stay connected.
+
+### 9. **Arm Aiming Left (Static Joint Anchors)**
+- **Problem**: Joint anchors stayed fixed in rig space, so after cocking the arm the hinge locations were still vertical, letting the counterweight pull the arm around the wrong side.
+- **Fix**: Anchor positions now follow the arm's rotation (`to_global` → `to_local`), keeping the counterweight and sling on the intended sides so the trebuchet faces and throws right.
+
+### 10. **Reset Button Disabled During Flight**
+- **Problem**: Reset was disabled as soon as you fired, so you couldn’t abort mid-flight or re-cock after a bad shot.
+- **Fix**: Leave reset enabled in `_fire()`; pressing it now immediately re-cocks the rig and clears the trail/score even while the projectile is active.
+
+### 11. **Sling Not Anchored / Stretching + Arm Jitter**
+- **Problem**: The sling joint was too soft and wasn’t following the arm tip, so the rope stretched and the arm jittered.
+- **Fix**: Retuned the sling as a `DampedSpringJoint2D` with higher stiffness/damping, anchors driven from the arm tip each reset so it stays taut and attached even as the rig rotates.
+
+### 12. **Arm Binding at the Fulcrum**
+- **Problem**: The arm’s collider was bumping into the pivot collider, so it couldn’t rotate freely around the fulcrum.
+- **Fix**: Disabled collisions on the pivot itself and turned on `disable_collision` for the pivot/counterweight pin joints so constraints hold without any physical blocking.
+
+### 13. **Sling Still Stretching**
+- **Problem**: The soft spring sling was elongating under load, so the rope length wasn’t preserved and the projectile lagged behind the arm tip.
+- **Fix**: Cranked up sling stiffness/damping (both in-scene and at runtime) so the DampedSpring behaves much closer to a fixed-length rope while keeping the system stable.
+
+### 14. **Frame Collider Blocking Shots**
+- **Problem**: The vertical frame column still had an active collider, so the projectile could hit it even though it’s just a visual.
+- **Fix**: Set the frame’s collision layer/mask to 0 so it is purely visual and no longer interacts with physics.
+
 ## Scene Structure (After Fixes)
 
 ```
