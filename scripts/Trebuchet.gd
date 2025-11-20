@@ -426,8 +426,8 @@ func _ensure_sling_joint() -> void:
 		return
 	joint_sling = DampedSpringJoint2D.new()
 	joint_sling.name = "JointSling"
-	joint_sling.node_a = trebuchet_rig.get_path_to(arm_body)
-	joint_sling.node_b = trebuchet_rig.get_path_to(projectile_body)
+	joint_sling.node_a = NodePath("Arm")
+	joint_sling.node_b = NodePath("Projectile")
 	joint_sling.disable_collision = true
 	joint_sling.stiffness = 5.0
 	joint_sling.damping = 0.05

@@ -24,16 +24,28 @@ script = ExtResource("1_j3ybt")
 
 [node name="Simulation" type="Node2D" parent="."]
 
+[node name="Camera2D" type="Camera2D" parent="Simulation"]
+position = Vector2(960, 360)
+zoom = Vector2(0.8, 0.8)
+
 [node name="TrebuchetRig" type="Node2D" parent="Simulation"]
-position = Vector2(180, 400)
+position = Vector2(300, 400)
 
 [node name="Frame" type="StaticBody2D" parent="Simulation/TrebuchetRig"]
+
+[node name="FrameVisual" type="Polygon2D" parent="Simulation/TrebuchetRig/Frame"]
+color = Color(0.35, 0.25, 0.15, 1)
+polygon = PackedVector2Array(-20, -110, 20, -110, 20, 110, -20, 110)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Frame"]
 shape = SubResource("RectFrame")
 
 [node name="Pivot" type="StaticBody2D" parent="Simulation/TrebuchetRig"]
 position = Vector2(0, -120)
+
+[node name="PivotVisual" type="Polygon2D" parent="Simulation/TrebuchetRig/Pivot"]
+color = Color(0.2, 0.2, 0.2, 1)
+polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Pivot"]
 shape = SubResource("CirclePivot")
@@ -46,6 +58,11 @@ freeze = true
 linear_damp = 0.1
 angular_damp = 0.05
 
+[node name="ArmVisual" type="Polygon2D" parent="Simulation/TrebuchetRig/Arm"]
+position = Vector2(0, 50)
+color = Color(0.545098, 0.270588, 0.0745098, 1)
+polygon = PackedVector2Array(-7, -110, 7, -110, 7, 110, -7, 110)
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Arm"]
 position = Vector2(0, 50)
 shape = SubResource("RectArm")
@@ -56,6 +73,10 @@ visible = true
 mass = 800.0
 linear_damp = 0.2
 angular_damp = 0.1
+
+[node name="CounterweightVisual" type="Polygon2D" parent="Simulation/TrebuchetRig/Counterweight"]
+color = Color(0.4, 0.4, 0.4, 1)
+polygon = PackedVector2Array(-24, -24, 24, -24, 24, 24, -24, 24)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/TrebuchetRig/Counterweight"]
 shape = SubResource("RectCounter")
@@ -75,19 +96,20 @@ polygon = PackedVector2Array(0, -10, 7.07107, -7.07107, 10, 0, 7.07107, 7.07107,
 shape = SubResource("CircleProjectile")
 
 [node name="JointPivot" type="PinJoint2D" parent="Simulation/TrebuchetRig"]
-node_a = NodePath("../Pivot")
-node_b = NodePath("../Arm")
+position = Vector2(0, -120)
+node_a = NodePath("Pivot")
+node_b = NodePath("Arm")
 bias = 0.9
 
 [node name="JointCounterweight" type="PinJoint2D" parent="Simulation/TrebuchetRig"]
 position = Vector2(0, -200)
-node_a = NodePath("../Arm")
-node_b = NodePath("../Counterweight")
+node_a = NodePath("Arm")
+node_b = NodePath("Counterweight")
 
 [node name="JointSling" type="DampedSpringJoint2D" parent="Simulation/TrebuchetRig"]
 position = Vector2(0, -20)
-node_a = NodePath("../Arm")
-node_b = NodePath("../Projectile")
+node_a = NodePath("Arm")
+node_b = NodePath("Projectile")
 rest_length = 80.0
 stiffness = 5.0
 damping = 0.05
