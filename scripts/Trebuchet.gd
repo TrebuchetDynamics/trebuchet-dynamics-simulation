@@ -457,7 +457,7 @@ func _cock_trebuchet() -> void:
 		return
 	
 	# 1. Set Arm Angle
-	var cock_angle: float = - float(clamp(slider_state["draw"], 40.0, 120.0))
+	var cock_angle: float = float(clamp(slider_state["draw"], 40.0, 120.0))
 	_set_bodies_frozen(true)
 	arm_body.rotation_degrees = cock_angle
 	arm_body.linear_velocity = Vector2.ZERO
@@ -487,10 +487,10 @@ func _cock_trebuchet() -> void:
 		elif dy < sling_length_px:
 			# Calculate horizontal offset to maintain sling length
 			var dx := sqrt(sling_length_px * sling_length_px - dy * dy)
-			# Place projectile "behind" the swing direction (to the right if arm is cocked left/up)
-			# Arm is cocked negative degrees (left/up). Swing goes right.
-			# Projectile usually drags behind.
-			proj_local = Vector2(tip_local.x + dx, ground_y_local)
+			# Place projectile "behind" the swing direction (to the left if arm is cocked right)
+			# Arm is cocked positive degrees (right). Swing goes left initially, then forward.
+			# Projectile drags behind to the left.
+			proj_local = Vector2(tip_local.x - dx, ground_y_local)
 	
 	projectile_body.position = proj_local
 	projectile_body.rotation = 0.0
@@ -550,12 +550,24 @@ func _rebuild_sling_rig(tip_local: Vector2, proj_local: Vector2) -> void:
 	sling_body.position = midpoint
 	sling_body.rotation = angle + PI / 2
 	
-	# Shape for mass distribution
+	# Shape for mass distribution (centered on body)
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(SLING_SEGMENT_WIDTH, sling_len)
 	var coll := CollisionShape2D.new()
 	coll.shape = shape
 	sling_body.add_child(coll)
+	
+	# Visual representation
+	var visual := Polygon2D.new()
+	visual.color = Color(0.92, 0.74, 0.42, 0.8) # Rope color
+	var half_len := sling_len * 0.5
+	visual.polygon = PackedVector2Array([
+		Vector2(-SLING_SEGMENT_WIDTH * 0.5, -half_len),
+		Vector2(SLING_SEGMENT_WIDTH * 0.5, -half_len),
+		Vector2(SLING_SEGMENT_WIDTH * 0.5, half_len),
+		Vector2(-SLING_SEGMENT_WIDTH * 0.5, half_len)
+	])
+	sling_body.add_child(visual)
 	
 	trebuchet_rig.add_child(sling_body)
 	
@@ -600,9 +612,11 @@ func _check_release_condition() -> void:
 	while arm_angle_deg < -180.0:
 		arm_angle_deg += 360.0
 	
-	# Release when arm is vertical (90 degrees ± tolerance)
-	# Since arm starts at negative angle and swings up, we check for 90 degrees
-	if abs(arm_angle_deg - 90.0) <= release_angle_tolerance_deg:
+	# Release when arm is vertical (180 degrees ± tolerance)
+	# Arm starts at positive angle (e.g., 90° right) and swings counterclockwise
+	# When pointing straight up, it's at 180° (or -180°, which is the same)
+	var target_angle := 180.0
+	if abs(arm_angle_deg - target_angle) <= release_angle_tolerance_deg or abs(arm_angle_deg - (-target_angle)) <= release_angle_tolerance_deg:
 		_release_projectile()
 
 
