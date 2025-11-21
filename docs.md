@@ -160,3 +160,28 @@ $CollisionShape2D.shape.extents *= (1 + linear_velocity.length() / 1000)
 
 **Refs**: [RigidBody2D Class](https://docs.godotengine.org/en/stable/classes/class_rigidbody2d.html). Download project starters (e.g., character_body_2d_starter.zip).
 
+## Trebuchet Physics Implementation
+The trebuchet simulation has been upgraded from a spring-based approximation to a fully rigid body simulation for maximum realism and stability.
+
+### Rigid Sling System
+Instead of a `DampedSpringJoint2D` (which caused elasticity and bouncing), the sling is now modeled as a physical chain:
+`Arm` -> `PinJoint2D` -> `RigidBody2D (Sling Rod)` -> `PinJoint2D` -> `Projectile`
+
+This "Rigid Rod" approach ensures:
+1.  **Zero Stretching**: The distance between the arm tip and projectile is mathematically constrained.
+2.  **No Bouncing**: The projectile cannot oscillate like it's on a rubber band.
+3.  **Realistic Whip**: The sling body has mass and inertia, contributing to the whip-like action of a real trebuchet.
+
+### Inverse Kinematics (IK) Cocking
+To prevent physics explosions at the start of a simulation, a custom IK solver (`_cock_trebuchet`) calculates the precise initial state:
+1.  **Arm Angle**: Sets the main arm to the desired draw angle.
+2.  **Counterweight**: Positions the counterweight hanging vertically from the short arm.
+3.  **Sling & Projectile**:
+    *   Calculates where the projectile *should* be based on gravity and the ground plane.
+    *   If the sling would dangle through the floor, the system solves the Circle-Line intersection to place the projectile correctly on the ground, maintaining the exact sling length.
+    *   The sling body is then instantiated and rotated to perfectly connect the arm tip and the projectile.
+
+### Tuning & Physics
+*   **Mass Ratios**: The most critical factor. A counterweight:projectile ratio of roughly 40:1 to 100:1 yields best results.
+*   **Release Angle**: The projectile is released when the sling angle relative to the arm velocity vector crosses a threshold (`RELEASE_TOLERANCE_DEG`).
+*   **Time Step**: The simulation runs on Godot's standard physics tick. For extreme high-speed simulations, increasing `physics_ticks_per_second` in Project Settings may improve precision, though the current setup is stable at 60Hz.

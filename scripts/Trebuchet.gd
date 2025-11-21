@@ -7,8 +7,9 @@ const PROJ_RADIUS := 12.0
 const GROUND_CHECK_Y := GROUND_Y + PROJ_RADIUS
 const GRAVITY := 9.81
 const WIND_FORCE_SCALE := 32.0
-const SLING_STIFFNESS := 150.0
-const SLING_DAMPING := 20.0
+const SLING_SEGMENT_WIDTH := 4.0
+
+
 const SIM_STEPS := 220
 const TRAJECTORY_DT := 0.03
 const TRAIL_POINT_DISTANCE := 6.0
@@ -34,7 +35,7 @@ const SLIDER_META := {
 	"projectile": {"title": "Projectile Mass (kg)", "min": 1.0, "max": 100.0, "step": 1.0, "format": "Projectile Mass: %.0f kg"},
 	"arm": {"title": "Arm Length (m)", "min": 4.0, "max": 12.0, "step": 0.1, "format": "Arm Length: %.1f m"},
 	"draw": {"title": "Draw Angle (deg)", "min": 30.0, "max": 120.0, "step": 1.0, "format": "Draw Angle: %.0f°"},
-	"wind": {"title": "Wind Force (m/s)", "min": -20.0, "max": 20.0, "step": 1.0, "format": "Wind: %.0f m/s"},
+	"wind": {"title": "Wind Force (m/s)", "min": - 20.0, "max": 20.0, "step": 1.0, "format": "Wind: %.0f m/s"},
 }
 
 var slider_refs: Dictionary = {}
@@ -66,8 +67,11 @@ var counterweight_body: RigidBody2D
 var projectile_body: RigidBody2D
 var joint_pivot: PinJoint2D
 var joint_counterweight: PinJoint2D
-var joint_sling: DampedSpringJoint2D = null
+var joint_arm_sling: PinJoint2D
+var joint_sling_proj: PinJoint2D
+var sling_body: RigidBody2D
 var sling_line: Line2D
+
 
 var arm_short_length_px: float = 60.0
 var arm_long_length_px: float = 160.0
@@ -108,7 +112,8 @@ func _cache_scene_refs() -> void:
 	projectile_body = trebuchet_rig.get_node("Projectile") as RigidBody2D
 	joint_pivot = trebuchet_rig.get_node("JointPivot") as PinJoint2D
 	joint_counterweight = trebuchet_rig.get_node("JointCounterweight") as PinJoint2D
-	joint_sling = trebuchet_rig.get_node_or_null("JointSling") as DampedSpringJoint2D
+
+
 	sling_line = trebuchet_rig.get_node("SlingLine") as Line2D
 	ui_root = _get_or_create_ui_root()
 	projectile_body.continuous_cd = RigidBody2D.CCD_MODE_CAST_RAY
@@ -120,11 +125,12 @@ func _cache_scene_refs() -> void:
 		joint_pivot.softness = 0.0
 	if joint_counterweight:
 		joint_counterweight.softness = 0.0
+		joint_counterweight.disable_collision = true
 	arm_body.gravity_scale = grav_scale
 	counterweight_body.gravity_scale = grav_scale
 	projectile_body.gravity_scale = grav_scale
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if not projectile_body:
 		return
 	var global_pos: Vector2 = projectile_body.global_position
@@ -444,42 +450,61 @@ func _update_joint_targets() -> void:
 		var hinge_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
 		joint_counterweight.position = trebuchet_rig.to_local(hinge_global)
 		joint_counterweight.disable_collision = true
-	if joint_sling and arm_body and trebuchet_rig:
-		var sling_anchor_global := _arm_tip_global()
-		joint_sling.node_a = NodePath("../Arm")
-		joint_sling.node_b = NodePath("../Projectile")
-		joint_sling.position = trebuchet_rig.to_local(sling_anchor_global)
-		joint_sling.rest_length = sling_length_px
-		joint_sling.stiffness = SLING_STIFFNESS
-		joint_sling.damping = SLING_DAMPING
-		joint_sling.disable_collision = true
+
 
 func _cock_trebuchet() -> void:
 	if not arm_body or not projectile_body:
 		return
-	_ensure_sling_joint()
-	var cock_angle: float = -float(clamp(slider_state["draw"], 40.0, 120.0))
+	
+	# 1. Set Arm Angle
+	var cock_angle: float = - float(clamp(slider_state["draw"], 40.0, 120.0))
 	_set_bodies_frozen(true)
-	arm_body.can_sleep = false
-	counterweight_body.can_sleep = false
-	projectile_body.can_sleep = false
 	arm_body.rotation_degrees = cock_angle
 	arm_body.linear_velocity = Vector2.ZERO
 	arm_body.angular_velocity = 0.0
+	
+	# 2. Position Counterweight
 	var counter_anchor_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
 	var counter_local := trebuchet_rig.to_local(counter_anchor_global + Vector2(0, -COUNTER_HINGE_DROP))
 	counterweight_body.position = counter_local
 	counterweight_body.linear_velocity = Vector2.ZERO
 	counterweight_body.angular_velocity = 0.0
-	var projectile_global := arm_body.to_global(Vector2(0, arm_long_length_px + sling_length_px))
-	projectile_body.position = trebuchet_rig.to_local(projectile_global)
+	
+	# 3. Calculate Projectile & Sling Position (IK)
+	var tip_global := _arm_tip_global()
+	var ground_y_local := trebuchet_rig.to_local(Vector2(0, GROUND_CHECK_Y - PROJ_RADIUS)).y
+	var tip_local := trebuchet_rig.to_local(tip_global)
+	
+	# Default: Hanging straight down
+	var proj_local := tip_local + Vector2(0, sling_length_px)
+	
+	# Ground collision check (Circle-Line intersection)
+	if proj_local.y > ground_y_local:
+		var dy := ground_y_local - tip_local.y
+		# If arm tip is below ground (unlikely but possible), clamp
+		if dy < 0:
+			proj_local = Vector2(tip_local.x, ground_y_local)
+		elif dy < sling_length_px:
+			# Calculate horizontal offset to maintain sling length
+			var dx := sqrt(sling_length_px * sling_length_px - dy * dy)
+			# Place projectile "behind" the swing direction (to the right if arm is cocked left/up)
+			# Arm is cocked negative degrees (left/up). Swing goes right.
+			# Projectile usually drags behind.
+			proj_local = Vector2(tip_local.x + dx, ground_y_local)
+	
+	projectile_body.position = proj_local
 	projectile_body.rotation = 0.0
 	projectile_body.linear_velocity = Vector2.ZERO
 	projectile_body.angular_velocity = 0.0
+	
+	# 4. Rebuild Sling Rig
+	_rebuild_sling_rig(tip_local, proj_local)
+	
 	_update_joint_targets()
 	sling_attached = true
 	released = false
 	armed = false
+
 
 func _set_bodies_frozen(flag: bool) -> void:
 	for body in [arm_body, counterweight_body, projectile_body]:
@@ -487,49 +512,113 @@ func _set_bodies_frozen(flag: bool) -> void:
 			body.freeze = flag
 			if flag:
 				body.sleeping = true
+	if sling_body and is_instance_valid(sling_body):
+		sling_body.freeze = flag
+		if flag:
+			sling_body.sleeping = true
 
-func _ensure_sling_joint() -> void:
-	if not trebuchet_rig or not arm_body or not projectile_body:
-		return
-	if joint_sling and is_instance_valid(joint_sling):
-		_update_joint_targets()
-		return
-	joint_sling = DampedSpringJoint2D.new()
-	joint_sling.name = "JointSling"
-	joint_sling.node_a = NodePath("../Arm")
-	joint_sling.node_b = NodePath("../Projectile")
-	joint_sling.disable_collision = true
-	joint_sling.stiffness = SLING_STIFFNESS
-	joint_sling.damping = SLING_DAMPING
-	trebuchet_rig.add_child(joint_sling)
-	_update_joint_targets()
+
+func _rebuild_sling_rig(tip_local: Vector2, proj_local: Vector2) -> void:
+	# Cleanup old rig
+	if sling_body and is_instance_valid(sling_body):
+		sling_body.queue_free()
+	if joint_arm_sling and is_instance_valid(joint_arm_sling):
+		joint_arm_sling.queue_free()
+	if joint_sling_proj and is_instance_valid(joint_sling_proj):
+		joint_sling_proj.queue_free()
+	
+	sling_body = null
+	joint_arm_sling = null
+	joint_sling_proj = null
+	
+	# Create single rigid sling body
+	var sling_vec := proj_local - tip_local
+	var sling_len := sling_vec.length()
+	var angle := sling_vec.angle()
+	
+	sling_body = RigidBody2D.new()
+	sling_body.name = "SlingBody"
+	sling_body.mass = 0.5 # Light but not massless
+	sling_body.gravity_scale = grav_scale
+	sling_body.linear_damp = 0.05
+	sling_body.angular_damp = 0.05
+	sling_body.collision_layer = 0
+	sling_body.collision_mask = 0
+	
+	# Position at midpoint
+	var midpoint := (tip_local + proj_local) * 0.5
+	sling_body.position = midpoint
+	sling_body.rotation = angle + PI / 2
+	
+	# Shape for mass distribution
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(SLING_SEGMENT_WIDTH, sling_len)
+	var coll := CollisionShape2D.new()
+	coll.shape = shape
+	sling_body.add_child(coll)
+	
+	trebuchet_rig.add_child(sling_body)
+	
+	# Pin joint: Arm -> Sling (at arm tip)
+	joint_arm_sling = PinJoint2D.new()
+	joint_arm_sling.name = "JointArmSling"
+	joint_arm_sling.node_a = arm_body.get_path()
+	joint_arm_sling.node_b = sling_body.get_path()
+	joint_arm_sling.position = tip_local
+	joint_arm_sling.disable_collision = true
+	joint_arm_sling.softness = 0.0
+	trebuchet_rig.add_child(joint_arm_sling)
+	
+	# Pin joint: Sling -> Projectile (at projectile)
+	joint_sling_proj = PinJoint2D.new()
+	joint_sling_proj.name = "JointSlingProj"
+	joint_sling_proj.node_a = sling_body.get_path()
+	joint_sling_proj.node_b = projectile_body.get_path()
+	joint_sling_proj.position = proj_local
+	joint_sling_proj.disable_collision = true
+	joint_sling_proj.softness = 0.0
+	trebuchet_rig.add_child(joint_sling_proj)
+
 
 func _release_projectile() -> void:
 	released = true
 	sling_attached = false
-	if joint_sling and is_instance_valid(joint_sling):
-		joint_sling.queue_free()
-	joint_sling = null
+	if joint_sling_proj and is_instance_valid(joint_sling_proj):
+		joint_sling_proj.queue_free()
+		joint_sling_proj = null
+
 
 func _check_release_condition() -> void:
 	if released or not armed:
 		return
-	var tip_vector := (_arm_tip_global() - arm_body.global_position).normalized()
-	var angle: float = abs(rad_to_deg(Vector2.RIGHT.angle_to(tip_vector)))
-	if angle <= release_angle_tolerance_deg:
+	# Release when arm is perpendicular to ground (pointing straight up)
+	# This is when the arm's rotation is approximately 90 degrees (PI/2 radians)
+	var arm_angle_deg: float = rad_to_deg(arm_body.rotation)
+	# Normalize to -180 to 180 range
+	while arm_angle_deg > 180.0:
+		arm_angle_deg -= 360.0
+	while arm_angle_deg < -180.0:
+		arm_angle_deg += 360.0
+	
+	# Release when arm is vertical (90 degrees ± tolerance)
+	# Since arm starts at negative angle and swings up, we check for 90 degrees
+	if abs(arm_angle_deg - 90.0) <= release_angle_tolerance_deg:
 		_release_projectile()
+
 
 func _update_sling_line() -> void:
 	if not sling_line or not arm_body:
 		return
-	var anchor := trebuchet_rig.to_local(_arm_tip_global())
 	var points := PackedVector2Array()
-	points.append(anchor)
-	if sling_attached:
+	points.append(trebuchet_rig.to_local(_arm_tip_global()))
+	
+	if sling_attached and sling_body and is_instance_valid(sling_body):
 		points.append(trebuchet_rig.to_local(projectile_body.global_position))
 	else:
-		points.append(anchor)
+		points.append(trebuchet_rig.to_local(_arm_tip_global()))
+	
 	sling_line.points = points
+
 
 func _arm_tip_global() -> Vector2:
 	return arm_body.to_global(Vector2(0, arm_long_length_px))
