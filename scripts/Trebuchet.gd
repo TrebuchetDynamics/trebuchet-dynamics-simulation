@@ -19,14 +19,13 @@ const BRICK_SIZE := Vector2(48, 24)
 const BRICK_PADDING := Vector2(8, 6)
 const RELEASE_TOLERANCE_DEG := 12.0
 const MIN_SHORT_METERS := 1.2
-const COUNTER_HINGE_DROP := 24.0
 const SCORE_FILE := "user://scores.cfg"
 
 var slider_state: Dictionary = {
 	"counter": 800.0,
 	"projectile": 20.0,
 	"arm": 8.0,
-	"draw": 90.0,
+	"draw": 45.0,
 	"wind": 0.0,
 }
 
@@ -72,6 +71,9 @@ var joint_sling_proj: PinJoint2D
 var sling_body: RigidBody2D
 var sling_line: Line2D
 
+var pending_reset_timer: SceneTreeTimer
+var pending_reset_cancelled: bool = false
+
 
 var arm_short_length_px: float = 60.0
 var arm_long_length_px: float = 160.0
@@ -112,6 +114,10 @@ func _cache_scene_refs() -> void:
 	projectile_body = trebuchet_rig.get_node("Projectile") as RigidBody2D
 	joint_pivot = trebuchet_rig.get_node("JointPivot") as PinJoint2D
 	joint_counterweight = trebuchet_rig.get_node("JointCounterweight") as PinJoint2D
+	# Counterweight is now kinematic and rigidly aligned to the arm; remove extra joint
+	if joint_counterweight:
+		joint_counterweight.queue_free()
+		joint_counterweight = null
 
 
 	sling_line = trebuchet_rig.get_node("SlingLine") as Line2D
@@ -120,6 +126,13 @@ func _cache_scene_refs() -> void:
 	arm_body.can_sleep = false
 	counterweight_body.can_sleep = false
 	projectile_body.can_sleep = false
+# Prevent rig components from colliding with each other; keep projectile-ground collisions
+	arm_body.collision_mask = 0
+	counterweight_body.collision_mask = 0
+	arm_body.collision_layer = 1
+	counterweight_body.collision_layer = 1
+	projectile_body.collision_layer = 1
+	projectile_body.collision_mask = 1
 	if joint_pivot:
 		joint_pivot.disable_collision = true
 		joint_pivot.softness = 0.0
@@ -129,10 +142,14 @@ func _cache_scene_refs() -> void:
 	arm_body.gravity_scale = grav_scale
 	counterweight_body.gravity_scale = grav_scale
 	projectile_body.gravity_scale = grav_scale
+	_set_counterweight_kinematic()
 
 func _physics_process(_delta: float) -> void:
 	if not projectile_body:
 		return
+	_align_counterweight_to_arm()
+	if is_projectile_active and sling_attached and not released:
+		_enforce_sling_length()
 	var global_pos: Vector2 = projectile_body.global_position
 	projectile_position = _to_simulation(global_pos)
 	projectile_velocity = projectile_body.linear_velocity
@@ -426,6 +443,7 @@ func _configure_rig_from_sliders() -> void:
 	sling_length_px = clamp(long_m * 0.9 * px_scale, 60.0, 280.0)
 	release_angle_tolerance_deg = RELEASE_TOLERANCE_DEG
 	if counterweight_body:
+		_set_counterweight_kinematic()
 		counterweight_body.mass = slider_state["counter"]
 	if projectile_body:
 		projectile_body.mass = slider_state["projectile"]
@@ -446,11 +464,9 @@ func _update_arm_shape() -> void:
 	arm_shape.position.y = (arm_long_length_px - arm_short_length_px) * 0.5
 
 func _update_joint_targets() -> void:
-	if joint_counterweight and arm_body and trebuchet_rig:
-		var hinge_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
-		joint_counterweight.position = trebuchet_rig.to_local(hinge_global)
-		joint_counterweight.disable_collision = true
-
+	if joint_counterweight:
+		joint_counterweight.queue_free()
+		joint_counterweight = null
 
 func _cock_trebuchet() -> void:
 	if not arm_body or not projectile_body:
@@ -464,11 +480,9 @@ func _cock_trebuchet() -> void:
 	arm_body.angular_velocity = 0.0
 	
 	# 2. Position Counterweight
-	var counter_anchor_global := arm_body.to_global(Vector2(0, -arm_short_length_px))
-	var counter_local := trebuchet_rig.to_local(counter_anchor_global + Vector2(0, -COUNTER_HINGE_DROP))
-	counterweight_body.position = counter_local
-	counterweight_body.linear_velocity = Vector2.ZERO
-	counterweight_body.angular_velocity = 0.0
+	# The counterweight should hang straight down from the short arm end
+	_align_counterweight_to_arm()
+
 	
 	# 3. Calculate Projectile & Sling Position (IK)
 	var tip_global := _arm_tip_global()
@@ -505,17 +519,24 @@ func _cock_trebuchet() -> void:
 	released = false
 	armed = false
 
-
+	
 func _set_bodies_frozen(flag: bool) -> void:
-	for body in [arm_body, counterweight_body, projectile_body]:
+	for body in [arm_body, projectile_body]:
 		if body:
 			body.freeze = flag
 			if flag:
 				body.sleeping = true
+	_set_counterweight_kinematic()
 	if sling_body and is_instance_valid(sling_body):
 		sling_body.freeze = flag
 		if flag:
 			sling_body.sleeping = true
+
+func _set_counterweight_kinematic() -> void:
+	if not counterweight_body:
+		return
+	counterweight_body.freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
+	counterweight_body.freeze = true
 
 
 func _rebuild_sling_rig(tip_local: Vector2, proj_local: Vector2) -> void:
@@ -601,22 +622,24 @@ func _release_projectile() -> void:
 
 
 func _check_release_condition() -> void:
-	if released or not armed:
+	if released or not armed or not sling_attached:
 		return
-	# Release when arm is perpendicular to ground (pointing straight up)
-	# This is when the arm's rotation is approximately 90 degrees (PI/2 radians)
-	var arm_angle_deg: float = rad_to_deg(arm_body.rotation)
-	# Normalize to -180 to 180 range
-	while arm_angle_deg > 180.0:
-		arm_angle_deg -= 360.0
-	while arm_angle_deg < -180.0:
-		arm_angle_deg += 360.0
-	
-	# Release when arm is vertical (180 degrees ± tolerance)
-	# Arm starts at positive angle (e.g., 90° right) and swings counterclockwise
-	# When pointing straight up, it's at 180° (or -180°, which is the same)
-	var target_angle := 180.0
-	if abs(arm_angle_deg - target_angle) <= release_angle_tolerance_deg or abs(arm_angle_deg - (-target_angle)) <= release_angle_tolerance_deg:
+	if not arm_body or not projectile_body:
+		return
+	var projectile_global := projectile_body.global_position
+	var arm_tip_global := _arm_tip_global()
+	# Require projectile to be at least above the arm pivot before releasing
+	if projectile_global.y > arm_body.global_position.y:
+		return
+	var sling_vec: Vector2 = projectile_global - arm_tip_global
+	if sling_vec.length_squared() < 0.01:
+		return
+	# Only consider release when the projectile is above or level with the arm tip
+	if sling_vec.y > 0.0:
+		return
+	# Release when sling is vertical (perpendicular to ground) and above the arm tip
+	var deviation_from_vertical: float = abs(rad_to_deg(sling_vec.angle_to(Vector2.UP)))
+	if deviation_from_vertical <= release_angle_tolerance_deg:
 		_release_projectile()
 
 
@@ -639,6 +662,57 @@ func _arm_tip_global() -> Vector2:
 
 func _to_simulation(global_pos: Vector2) -> Vector2:
 	return simulation_root.to_local(global_pos)
+
+func _enforce_sling_length() -> void:
+	if not sling_attached or not arm_body or not projectile_body:
+		return
+	var tip := _arm_tip_global()
+	var proj_pos := projectile_body.global_position
+	var vec := proj_pos - tip
+	var dist := vec.length()
+	if dist < 0.001:
+		return
+	var desired := sling_length_px
+	var diff := dist - desired
+	if abs(diff) <= 0.5:
+		return
+	var dir := vec / dist
+	# Snap to desired length and remove radial velocity to avoid springy oscillations
+	projectile_body.global_position = tip + dir * desired
+	var vel := projectile_body.linear_velocity
+	var radial := vel.project(dir)
+	projectile_body.linear_velocity = vel - radial
+
+func _align_counterweight_to_arm() -> void:
+	if not arm_body or not counterweight_body:
+		return
+	var counter_drop := _counterweight_drop_distance()
+	var local_anchor := Vector2(0, -arm_short_length_px + counter_drop)
+	counterweight_body.global_position = arm_body.to_global(local_anchor)
+	counterweight_body.global_rotation = arm_body.global_rotation
+	_set_counterweight_offset(counter_drop)
+	counterweight_body.linear_velocity = Vector2.ZERO
+	counterweight_body.angular_velocity = 0.0
+
+func _counterweight_drop_distance() -> float:
+	var drop: float = 32.0
+	if counterweight_body:
+		var shape_node := counterweight_body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape_node and shape_node.shape is RectangleShape2D:
+			var rect := shape_node.shape as RectangleShape2D
+			drop = rect.size.y * 0.5 + 8.0
+	return clamp(drop, 16.0, arm_short_length_px * 0.9)
+
+func _set_counterweight_offset(drop: float) -> void:
+	if not counterweight_body:
+		return
+	var offset := Vector2(0, drop)
+	var shape_node := counterweight_body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape_node:
+		shape_node.position = offset
+	var visual := counterweight_body.get_node_or_null("CounterweightVisual") as Node2D
+	if visual:
+		visual.position = offset
 
 func _reset_projectile_state() -> void:
 	is_projectile_active = false
@@ -690,7 +764,14 @@ func _finalize_shot() -> void:
 	_reset_after_delay()
 
 func _reset_after_delay() -> void:
-	await get_tree().create_timer(1.2).timeout
+	_cancel_pending_reset_timer()
+	pending_reset_cancelled = false
+	pending_reset_timer = get_tree().create_timer(1.2)
+	var local_timer := pending_reset_timer
+	await local_timer.timeout
+	if pending_reset_cancelled or pending_reset_timer != local_timer:
+		return
+	pending_reset_timer = null
 	_reset_castle()
 	score = 0
 	_update_score_label()
@@ -721,6 +802,8 @@ func _save_high_score() -> void:
 	cfg.save(SCORE_FILE)
 
 func _manual_reset() -> void:
+	_cancel_pending_reset_timer()
+	reset_button.disabled = true
 	if is_projectile_active:
 		is_projectile_active = false
 		_set_bodies_frozen(true)
@@ -731,3 +814,7 @@ func _manual_reset() -> void:
 	_update_trajectory()
 	fire_button.disabled = false
 	reset_button.disabled = false
+
+func _cancel_pending_reset_timer() -> void:
+	pending_reset_cancelled = true
+	pending_reset_timer = null

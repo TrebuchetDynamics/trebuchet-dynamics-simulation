@@ -26,7 +26,7 @@ script = ExtResource("1_j3ybt")
 [node name="Simulation" type="Node2D" parent="."]
 
 [node name="Camera2D" type="Camera2D" parent="Simulation"]
-position = Vector2(960, 360)
+position = Vector2(600, 360)
 zoom = Vector2(0.8, 0.8)
 
 [node name="TrebuchetRig" type="Node2D" parent="Simulation"]
@@ -129,10 +129,12 @@ default_color = Color(1, 1, 1, 0.4)
 antialiased = true
 
 [node name="GroundCollider" type="StaticBody2D" parent="Simulation"]
-position = Vector2(960, 540)
+visible = false
+position = Vector2(960, 683)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Simulation/GroundCollider"]
-position = Vector2(0, 194)
+visible = false
+position = Vector2(-10, 95)
 shape = SubResource("RectGround")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
