@@ -204,3 +204,16 @@ describe('public caller failure and repair', () => {
     expect(simulateMechanism(design, dt)).toMatchObject({ released: false, endReason: 'no-release' })
   })
 })
+
+it.each([
+  { ...medium, beamInertia: 0.01 },
+  { ...large, armMass: 0.1 },
+])('stops unstable detached integration before emitting nonfinite animation for $counterweightMass kg', params => {
+  const result = simulateMechanism(params)
+  expect(result.released).toBe(true)
+  expect(result.states.length).toBeGreaterThan(result.releaseIndex! + 1)
+  for (const state of result.states) {
+    expect(Object.values(state).flat().every(Number.isFinite)).toBe(true)
+  }
+  expect(Object.values(result.energy).every(Number.isFinite)).toBe(true)
+})

@@ -201,7 +201,8 @@ function energy(p: Model, initial: number[], q: number[], phase: Phase): Mechani
 /** Pure planar solver. Slack/recontact/invalid arming are unsupported: no-release.
  * RK4 uses dt (default 1 ms), shortening only event endpoints. Animation samples
  * use dt, except the localized release sample; thereafter there are 3 seconds of
- * machine-only motion. Projectile positions are held at release (flight.ts owns flight).
+ * machine-only motion (truncated if integration becomes non-finite). Projectile
+ * positions are held at release (flight.ts owns flight).
  */
 export function simulateMechanism(params: MechanismParams, dt = 0.001): MechanismResult {
   const p = model(params), pose = cockedPose(params)
@@ -260,7 +261,9 @@ export function simulateMechanism(params: MechanismParams, dt = 0.001): Mechanis
       const releaseTime = t
       for (let i = 1; (i - 1) * dt < 3 - 1e-12; i++) {
         const elapsed = Math.min(i * dt, 3), previous = Math.min((i - 1) * dt, 3)
-        q = step(p, q, elapsed - previous, phase)
+        const nextDetached = step(p, q, elapsed - previous, phase)
+        if (!nextDetached.every(Number.isFinite)) break
+        q = nextDetached
         const detached = snapshot(p, q, releaseTime + elapsed, phase)
         detached.projectile = [...k.r]
         states.push(detached)
