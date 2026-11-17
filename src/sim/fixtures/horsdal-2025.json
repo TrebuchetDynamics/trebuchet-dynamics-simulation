@@ -1,0 +1,15 @@
+{
+  "source": "docs/research/trebuchet-model.md, Reference cases: Lossless complete-machine benchmark; Horsdal et al. (2025), Tables 1 and 3, theoretical 0.87 m sling / 717 g row",
+  "notes": "Reflect source x to make downrange positive. Normalize pivot height to a*cos(0.55). Keep MEASURED beam centre/inertia, not uniform-beam values. Maximize vacuum pivot-to-impact range over virtual releases; directed tangent alpha is reflected in sign. Search bounds/step are numerical test policy, not a published pin setting. Flight-only reconstruction is not a mechanism reference case.",
+  "params": {
+    "counterweightMass": 53.9, "projectileMass": 0.717, "armMass": 4.86,
+    "longArmLength": 0.975, "shortArmLength": 0.25, "hangerLength": 0.515,
+    "slingLength": 0.87, "pivotHeight": 0.8312114090080181,
+    "beamCenterOfMass": 0.465, "beamInertia": 1.85,
+    "axleFriction": 0, "troughFriction": 0, "gravity": 9.80665,
+    "pinAngleDeg": -50
+  },
+  "virtualPinSearch": { "fromDeg": -70, "toDeg": -30, "stepDeg": 2 },
+  "expectedVacuumRange": 42.8,
+  "rangeTolerance": 2.14
+}
