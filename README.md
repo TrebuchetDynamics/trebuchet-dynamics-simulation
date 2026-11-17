@@ -26,6 +26,45 @@ npm run preview      # serve the built dist/ bundle locally
 Opening the dev server in a browser shows the empty three.js canvas; `npm run build` writes
 `dist/index.html` plus hashed assets that can be served by any static file host.
 
+## Deployment
+
+Deployments use [Cloudflare Pages Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/).
+After `npm ci`, the owner completes this one-time setup:
+
+1. Run `npx wrangler login` and authorize the Cloudflare account in the browser.
+2. Run `npx wrangler pages project create`. When prompted, name the project
+   `trebuchet-simulator` and set its production branch to `main`.
+3. In the Cloudflare dashboard, open **Workers & Pages > trebuchet-simulator > Custom domains**
+   and add `simulator.trebuchetdynamics.com`. Complete the DNS instructions and wait for activation.
+   See [Pages custom domains](https://developers.cloudflare.com/pages/configuration/custom-domains/).
+
+Then build and upload to the production project with one command:
+
+```sh
+npm run deploy
+```
+
+This runs `npm run build` and uploads `dist/` using the locally installed Wrangler.
+Keep credentials out of the repository; login, project creation, DNS setup and deployment are owner actions.
+
+Vite uses `base: './'` so the same build has relative asset URLs for the Android app.
+`public/_headers` is copied to `dist/_headers`; Pages applies its security headers to all paths
+and immutable caching to `/assets/*`. The CSP allows framing by this site and
+`https://trebuchetdynamics.com` / `https://www.trebuchetdynamics.com` without `X-Frame-Options`.
+Vite's local preview does not apply Pages headers.
+
+After the first deployment, check the live headers:
+
+```sh
+curl -sI https://simulator.trebuchetdynamics.com
+```
+
+Expect `Content-Security-Policy: frame-ancestors 'self' https://trebuchetdynamics.com https://www.trebuchetdynamics.com`,
+`X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and no `X-Frame-Options`.
+Confirm the simulator loads in an iframe on the landing page. If the custom hostname returns
+Cloudflare error **522**, ensure it has been added to the project's **Custom domains** and complete
+its DNS validation; a CNAME alone without the Pages association is insufficient.
+
 ## Layout
 
 ```
