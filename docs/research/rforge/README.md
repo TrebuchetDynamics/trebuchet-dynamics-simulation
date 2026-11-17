@@ -40,7 +40,7 @@ Full texts were fetched only for selected sources and kept in the excluded run d
 | --- | --- |
 | arXiv `2303.01306` / DOI `10.48550/arXiv.2303.01306`, OpenAlex `W4323076413` | Read PDF v1, including geometry, Tables 1–3 and Appendix A. Dimensional presets and phase-model basis. |
 | arXiv `2502.19442` / DOI `10.48550/arXiv.2502.19442`, OpenAlex `W4416154417` | Read PDF v2, experimental setup, Tables 1–4, §§3.5–3.7, Appendix B. Complete-machine computed benchmark, measured-motion flight cross-check, friction and release limitations. |
-| Cline, LibreTexts §6.3 | Read HTML equations 6.31, 6.43, 6.45 and constraint/generalized-force discussion; principle for Derived equations. |
+| Cline, LibreTexts §6.3 | Read HTML equations 6.30–6.31, 6.43, 6.45 and constraint/generalized-force discussion; principle for Derived equations. |
 | OpenStax, University Physics Volume 1 §6.2 | Read HTML friction laws, Table 6.1, authors/publication metadata and empirical-law limitations. |
 | Wikipedia, Friction, revision `1384795959` | Read coefficient table and underlying attribution; secondary wood-on-wood kinetic range only. NASA primary attribution remains unread, explicitly disclosed. |
 | NIST, standard acceleration of gravitation, 2022 CODATA | Read numerical value and exact/conventional designation. |
