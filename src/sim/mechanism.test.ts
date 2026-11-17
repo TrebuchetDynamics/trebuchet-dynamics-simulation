@@ -189,6 +189,17 @@ describe('public caller failure and repair', () => {
     expect(r.states.at(-1)!.t).toBeCloseTo(20, 10)
     expect(r.states.at(-1)!.armAngle).toBeCloseTo(r.states[0].armAngle, 8)
   })
+  it.each([
+    { axleFriction: 0, axleStaticFriction: 100 },
+    { troughFriction: 0, troughStaticFriction: 100 },
+  ])('honors static hold even with zero kinetic friction: %j', friction => {
+    const r = simulateMechanism({ ...design, ...friction }, 0.01)
+    expect(r).toMatchObject({ released: false, endReason: 'time-limit' })
+    expect(r.states.at(-1)!.t).toBeCloseTo(20, 10)
+    expect(r.states.at(-1)!.armAngle).toBeCloseTo(r.states[0].armAngle, 8)
+    expect(r.energy.axleLoss).toBeCloseTo(0, 10)
+    expect(r.energy.troughLoss).toBeCloseTo(0, 10)
+  })
   it.each([0, -1, NaN, Infinity])('returns no-release for unusable dt %s without a loop', dt => {
     expect(simulateMechanism(design, dt)).toMatchObject({ released: false, endReason: 'no-release' })
   })

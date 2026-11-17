@@ -144,7 +144,7 @@ function dynamics(p: Model, q: number[], phase: Phase) {
     return { acc, Ft, S, N, R }
   }
   function contact(tau: number) {
-    if (phase !== 'trough' || p.muT === 0) return acceleration(tau, 0)
+    if (phase !== 'trough' || (p.muT === 0 && p.staticT === 0)) return acceleration(tau, 0)
     if (Math.abs(k.vr[0]) < 1e-9) {
       const held = acceleration(tau, 'stick')
       if (Math.abs(held.Ft) <= p.staticT * Math.max(0, held.N)) return held
@@ -153,7 +153,7 @@ function dynamics(p: Model, q: number[], phase: Phase) {
     return acceleration(tau, p.muT * direction)
   }
   let tau = 0, motion = contact(0)
-  if (p.muA > 0) {
+  if (p.muA > 0 || p.staticA > 0) {
     // Reaction depends on the unknown acceleration: iterate the journal law,
     // not a fixed counterweight-load approximation. At rest try static hold.
     if (Math.abs(w) < 1e-9) {
