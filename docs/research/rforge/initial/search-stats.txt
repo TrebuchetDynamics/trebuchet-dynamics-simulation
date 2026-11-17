@@ -1,0 +1,8 @@
+Source coverage for .orbi/search
+  crossref                 12 records (1 files)
+  openalex                 4 records (1 files)
+
+Total unique DOIs: 15
+Library (results.jsonl): 16 records
+
+Batch checkpoint: 2 completed, 0 failed, 0 pending pair(s)

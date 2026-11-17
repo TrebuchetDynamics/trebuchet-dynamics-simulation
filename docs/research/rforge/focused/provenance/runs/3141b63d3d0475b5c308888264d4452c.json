@@ -1,0 +1,106 @@
+{
+  "depth": "standard",
+  "errors": [],
+  "interrupted": false,
+  "limit": 8,
+  "outputs": [
+    {
+      "path": "results.jsonl",
+      "sha256": "47d0112c97bfa875c0e1a4ac30116e2290bc8634e1db4a20e5b0ba10a416d571"
+    },
+    {
+      "path": "results-deduped.jsonl",
+      "sha256": "34d566e49a32106024e3674807870d242786341f6b8189be1cb9d000d2969a39"
+    },
+    {
+      "path": "results.md",
+      "sha256": "59423977cb9ee84a971990ba9c423007c03a3e964ad34152080c72370e5c4d3c"
+    },
+    {
+      "path": "failures.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "3b397c0bb21b34d5ad0bfb22f248096b9f7e134c4c292b833af282fcf149a8df"
+    },
+    {
+      "path": "batch-state.json",
+      "sha256": "6aa59cbe4063b67d5871eb68c44f16e9a5b9110a0c0d15ad79332ff9677a4de8"
+    },
+    {
+      "path": "search-stats.txt",
+      "sha256": "09c34f193d8d9e2218b36bfbdda9000a6bbeea5aa379836747df81e0489c40b7"
+    },
+    {
+      "path": "raw/search-openalex-001-trebuchet-mechanics-siano.txt",
+      "sha256": "ed31ecadadacaf982802dda81c7037673225b6339ca9ef1ea71de13b72b360da"
+    },
+    {
+      "path": "raw/search-crossref-001-trebuchet-mechanics-siano.txt",
+      "sha256": "81089dfb9f7868fba66705ce5d6ffe18a01212a333bd1dbdbf4b7ab8bc22908c"
+    },
+    {
+      "path": "raw/search-openalex-002-siege-engine-dynamics-denny.txt",
+      "sha256": "8f1bf84687f93b019d28f64aadbf7035fdc65ff17f849dfab1066ccd107ddf57"
+    },
+    {
+      "path": "raw/search-crossref-002-siege-engine-dynamics-denny.txt",
+      "sha256": "7f63155322915bbaf2ddaa4e3eafd181394f05dab6a300f36a378fc05b3514a1"
+    },
+    {
+      "path": "raw/search-openalex-003-hinged-counterweight-trebuchet-equations-motion.txt",
+      "sha256": "69b727f4739ea395a469fa42560ee9a5e05cbc4c685ac9174ed7572e7e460de0"
+    },
+    {
+      "path": "raw/search-crossref-003-hinged-counterweight-trebuchet-equations-motion.txt",
+      "sha256": "97590a62e115f7251f03b8835fc19df428fcfb253e4f3810a38b063970bcd6cc"
+    },
+    {
+      "path": "raw/search-openalex-004-sling-release-trebuchet-pin-angle.txt",
+      "sha256": "c001742e439bd46bfae82e20f791e82c8bead1efdc6fbac6c9a23541a7bffb81"
+    },
+    {
+      "path": "raw/search-crossref-004-sling-release-trebuchet-pin-angle.txt",
+      "sha256": "6337c4e46774112a1c9159f9ae6097e946085db39979fa2d5baa8554c6fe1e7a"
+    },
+    {
+      "path": "raw/search-openalex-005-experimental-trebuchet-range-efficiency-measurements.txt",
+      "sha256": "f67081e7e227ac4a2b4bf6b6344d3428edb5fa803e60ecbf013c0da2660b2333"
+    },
+    {
+      "path": "raw/search-crossref-005-experimental-trebuchet-range-efficiency-measurements.txt",
+      "sha256": "1c19d96be15560fb75dea899ae507cb3939f264ca608a1c4b01ab26c87ffd99f"
+    },
+    {
+      "path": "raw/search-openalex-006-swinging-counterweight-trebuchet-scaling-optimization.txt",
+      "sha256": "c2f3bae0b5f52178c4e9ef7ab74e2300654da599325d310bae1152873acd7d01"
+    },
+    {
+      "path": "raw/search-crossref-006-swinging-counterweight-trebuchet-scaling-optimization.txt",
+      "sha256": "991da09db5ecce49a1e8309f023da5c7fca6f009a3b007b106f20b209bff84c2"
+    }
+  ],
+  "provenance_level": "engine_verified",
+  "queries": [
+    "Trebuchet Mechanics Siano",
+    "Siege engine dynamics Denny",
+    "hinged counterweight trebuchet equations motion",
+    "sling release trebuchet pin angle",
+    "experimental trebuchet range efficiency measurements",
+    "swinging counterweight trebuchet scaling optimization"
+  ],
+  "question": "Trebuchet Mechanics Siano; Siege engine dynamics Denny; hinged counterweight trebuchet equations motion; sling release trebuchet pin angle; experimental trebuchet range efficiency measurements; swinging counterweight trebuchet scaling optimization",
+  "rforge_version": {
+    "commit": "9b4c74b",
+    "date": "2026-11-02T05:31:33Z",
+    "version": "v0.2.1"
+  },
+  "run_id": "3141b63d3d0475b5c308888264d4452c",
+  "schema_version": "2",
+  "sources": [
+    "openalex",
+    "crossref"
+  ],
+  "timestamp": "2026-11-17T00:47:56.003497183Z"
+}
