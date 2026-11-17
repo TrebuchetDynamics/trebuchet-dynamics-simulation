@@ -1,0 +1,1 @@
+{"data":{"capabilities":{"brief":1,"compare":1,"mcp":1,"paper":1,"provenance":1,"search":1},"commit":"9b4c74b","date":"2026-11-02T05:31:33Z","error_codes":["usage","version_invalid","version_too_old","capability_missing","capability_too_old"],"name":"rforge","version":"v0.2.1"},"ok":true}

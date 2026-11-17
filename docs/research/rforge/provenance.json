@@ -1,0 +1,132 @@
+{
+  "schema_version": "2",
+  "provenance_level": "agent_reported",
+  "runs": [
+    "b42d0a63e13df26ca63a477e44564178"
+  ],
+  "entries": [
+    {
+      "provenance_level": "agent_reported",
+      "description": "Host-agent read-source synthesis and raw-excluded search export. Archived search receipts are retained as historical evidence only; original raw outputs are intentionally excluded. Human scientific review pending."
+    }
+  ],
+  "question": "Issue 3: fixed-frame hinged-counterweight trebuchet equations, release, friction, reference cases and source-backed presets",
+  "depth": "standard",
+  "sources": [
+    "openalex",
+    "crossref"
+  ],
+  "queries": [
+    "counterweight trebuchet dynamics hinged counterweight sling release equations motion experimental range efficiency",
+    "Trebuchet Mechanics Siano",
+    "Siege engine dynamics Denny",
+    "hinged counterweight trebuchet equations motion",
+    "sling release trebuchet pin angle",
+    "experimental trebuchet range efficiency measurements",
+    "swinging counterweight trebuchet scaling optimization"
+  ],
+  "timestamp": "2026-11-17T00:47:56Z",
+  "rforge_version": {
+    "commit": "9b4c74b",
+    "date": "2026-11-02T05:31:33Z",
+    "name": "rforge",
+    "version": "v0.2.1"
+  },
+  "search_stats": {
+    "initial_records": 16,
+    "initial_deduped": 16,
+    "focused_records": 90,
+    "focused_deduped": 62,
+    "search_requests": 14,
+    "expansion_edges": 4
+  },
+  "citation_expand_attempted": [
+    "W4323076413"
+  ],
+  "citation_expand_succeeded": [
+    "W4323076413"
+  ],
+  "outputs": [
+    {
+      "path": "README.md",
+      "sha256": "0265a7e7b7e149f74fcc95be211196961d4e945c240986520fe82857f3983745"
+    },
+    {
+      "path": "capabilities.json",
+      "sha256": "588885eada1ac52b7c5886b6d844c844e2943307da5e7b41417294f8586d7c27"
+    },
+    {
+      "path": "focused/batch-state.json",
+      "sha256": "6aa59cbe4063b67d5871eb68c44f16e9a5b9110a0c0d15ad79332ff9677a4de8"
+    },
+    {
+      "path": "focused/manifest.json",
+      "sha256": "3b397c0bb21b34d5ad0bfb22f248096b9f7e134c4c292b833af282fcf149a8df"
+    },
+    {
+      "path": "focused/provenance/events.jsonl",
+      "sha256": "7de5ce82f7ff337615ef160ef1bd84bc8f2821710d0783d88da4e42de8ac71ed"
+    },
+    {
+      "path": "focused/provenance/runs/3141b63d3d0475b5c308888264d4452c.json",
+      "sha256": "995c3ae2f92d28c07eb907b9f0c7695490312d465e874149065ea40b2a48248b"
+    },
+    {
+      "path": "focused/results.jsonl",
+      "sha256": "47d0112c97bfa875c0e1a4ac30116e2290bc8634e1db4a20e5b0ba10a416d571"
+    },
+    {
+      "path": "focused/search-stats.txt",
+      "sha256": "f9f392ea93bd497b59515faae3bad5410992af5f51a4124c253669a515ff60b1"
+    },
+    {
+      "path": "graph.json",
+      "sha256": "3a7a94cc404f59273456aeec324665307c1077da2e57873f10dbcaa352f0a616"
+    },
+    {
+      "path": "initial/batch-state.json",
+      "sha256": "cce182b9f0bf86a5ea33efc2de55a4e0b15e201e1c2dab0c65ec8fc37948f2a9"
+    },
+    {
+      "path": "initial/manifest.json",
+      "sha256": "cd1edfc174fc5fe8b1e3455ca077cf69c3c279a95ccaad00ed942962be11f30e"
+    },
+    {
+      "path": "initial/provenance/events.jsonl",
+      "sha256": "e89b38cb912b483bd8649c501108990b3f2a21f0c0a90f94f7f238d301506df7"
+    },
+    {
+      "path": "initial/provenance/runs/c49df9b5ae9fd7cd30adcbe99d59f51c.json",
+      "sha256": "b5f423223ea82d93388571c0e53d9dc49b6cb6e307bd83575db58946ba92765d"
+    },
+    {
+      "path": "initial/results.jsonl",
+      "sha256": "97846b75c301c54a54595a271432e79a4e45d205746645cb253ed7424db73fa9"
+    },
+    {
+      "path": "initial/search-stats.txt",
+      "sha256": "cb7999dc630fb821be0747688ff9d11febaae4e5f8803aa4ea8e6bfbc81930f5"
+    },
+    {
+      "path": "provenance/events.jsonl",
+      "sha256": "680343c111d2645dd08caa421f8df4532550d99d3d244528f645928ee73d0fdc"
+    },
+    {
+      "path": "provenance/runs/b42d0a63e13df26ca63a477e44564178.json",
+      "sha256": "77356eeb4e10366b35f5b60383ef02a674c43e179d7d98598fd649946a96357e"
+    },
+    {
+      "path": "queries.txt",
+      "sha256": "0bd187630b7918654a60dc50aecb4a1bfca1e1f30afced9f1298554469707fbf"
+    },
+    {
+      "path": "version.json",
+      "sha256": "18662a869f06e6f5cd08c548d69c972535bda3370810b105750eaec98bb4cb9a"
+    }
+  ],
+  "errors": [
+    "No search connector failures. Search exports omit raw responses and other original receipt outputs by issue requirement; complete engine validation of those archived receipts requires the private originals.",
+    "Siano PDF and NASA NTRS landing fetches reached 20-second network limits; no claims use their unread full texts.",
+    "Unused LibreTexts friction mirror and Engineering Statics chapter returned HTTP 404; USDA PDF/landing page returned HTTP 403. Read-source alternatives and secondary-friction limitations are documented in README.md."
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "depth": "standard",
+  "errors": [],
+  "interrupted": false,
+  "limit": 12,
+  "outputs": [
+    {
+      "path": "results.jsonl",
+      "sha256": "97846b75c301c54a54595a271432e79a4e45d205746645cb253ed7424db73fa9"
+    },
+    {
+      "path": "results-deduped.jsonl",
+      "sha256": "97846b75c301c54a54595a271432e79a4e45d205746645cb253ed7424db73fa9"
+    },
+    {
+      "path": "results.md",
+      "sha256": "c2a93d777a6afc11416e2a8d079aa0961b6a9f6baf18cfe88c907581b3665d62"
+    },
+    {
+      "path": "failures.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "cd1edfc174fc5fe8b1e3455ca077cf69c3c279a95ccaad00ed942962be11f30e"
+    },
+    {
+      "path": "batch-state.json",
+      "sha256": "cce182b9f0bf86a5ea33efc2de55a4e0b15e201e1c2dab0c65ec8fc37948f2a9"
+    },
+    {
+      "path": "raw/search-openalex-001-counterweight-trebuchet-dynamics-hinged-counterweight-sling-release-equations-mo.txt",
+      "sha256": "09f9a99516e389e34d411fe23d44e8a15b0d41c94803d7dd320650a01352fb46"
+    },
+    {
+      "path": "raw/search-crossref-001-counterweight-trebuchet-dynamics-hinged-counterweight-sling-release-equations-mo.txt",
+      "sha256": "9e77db194b63359e060e718c55705d48965b55e2e62fa276e9a8795335b8759f"
+    }
+  ],
+  "provenance_level": "engine_verified",
+  "queries": [
+    "counterweight trebuchet dynamics hinged counterweight sling release equations motion experimental range efficiency"
+  ],
+  "question": "counterweight trebuchet dynamics hinged counterweight sling release equations motion experimental range efficiency",
+  "rforge_version": {
+    "commit": "9b4c74b",
+    "date": "2026-11-02T05:31:33Z",
+    "version": "v0.2.1"
+  },
+  "run_id": "c49df9b5ae9fd7cd30adcbe99d59f51c",
+  "schema_version": "2",
+  "sources": [
+    "openalex",
+    "crossref"
+  ],
+  "timestamp": "2026-11-17T00:46:33.576759008Z"
+}

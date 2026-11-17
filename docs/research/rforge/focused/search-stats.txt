@@ -1,0 +1,8 @@
+Source coverage for .orbi/focused
+  crossref                 48 records (6 files)
+  openalex                 42 records (6 files)
+
+Total unique DOIs: 58
+Library (results.jsonl): 90 records
+
+Batch checkpoint: 12 completed, 0 failed, 0 pending pair(s)

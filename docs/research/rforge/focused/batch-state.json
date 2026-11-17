@@ -1,0 +1,142 @@
+{
+  "job_id": "job_d2e136c9b96950f8cbecff2373e0976a",
+  "schemaVersion": "1",
+  "createdAt": "2026-11-17T00:47:48Z",
+  "updatedAt": "2026-11-17T00:47:56Z",
+  "queries": [
+    "Trebuchet Mechanics Siano",
+    "Siege engine dynamics Denny",
+    "hinged counterweight trebuchet equations motion",
+    "sling release trebuchet pin angle",
+    "experimental trebuchet range efficiency measurements",
+    "swinging counterweight trebuchet scaling optimization"
+  ],
+  "sources": [
+    "openalex",
+    "crossref"
+  ],
+  "limit": 8,
+  "completed": [
+    {
+      "source": "openalex",
+      "query": "Trebuchet Mechanics Siano",
+      "rawFile": "raw/search-openalex-001-trebuchet-mechanics-siano.txt",
+      "records": 8
+    },
+    {
+      "source": "crossref",
+      "query": "Trebuchet Mechanics Siano",
+      "rawFile": "raw/search-crossref-001-trebuchet-mechanics-siano.txt",
+      "records": 8
+    },
+    {
+      "source": "openalex",
+      "query": "Siege engine dynamics Denny",
+      "rawFile": "raw/search-openalex-002-siege-engine-dynamics-denny.txt",
+      "records": 8
+    },
+    {
+      "source": "crossref",
+      "query": "Siege engine dynamics Denny",
+      "rawFile": "raw/search-crossref-002-siege-engine-dynamics-denny.txt",
+      "records": 8
+    },
+    {
+      "source": "openalex",
+      "query": "hinged counterweight trebuchet equations motion",
+      "rawFile": "raw/search-openalex-003-hinged-counterweight-trebuchet-equations-motion.txt",
+      "records": 8
+    },
+    {
+      "source": "crossref",
+      "query": "hinged counterweight trebuchet equations motion",
+      "rawFile": "raw/search-crossref-003-hinged-counterweight-trebuchet-equations-motion.txt",
+      "records": 8
+    },
+    {
+      "source": "openalex",
+      "query": "sling release trebuchet pin angle",
+      "rawFile": "raw/search-openalex-004-sling-release-trebuchet-pin-angle.txt",
+      "records": 8
+    },
+    {
+      "source": "crossref",
+      "query": "sling release trebuchet pin angle",
+      "rawFile": "raw/search-crossref-004-sling-release-trebuchet-pin-angle.txt",
+      "records": 8
+    },
+    {
+      "source": "openalex",
+      "query": "experimental trebuchet range efficiency measurements",
+      "rawFile": "raw/search-openalex-005-experimental-trebuchet-range-efficiency-measurements.txt",
+      "records": 8
+    },
+    {
+      "source": "crossref",
+      "query": "experimental trebuchet range efficiency measurements",
+      "rawFile": "raw/search-crossref-005-experimental-trebuchet-range-efficiency-measurements.txt",
+      "records": 8
+    },
+    {
+      "source": "openalex",
+      "query": "swinging counterweight trebuchet scaling optimization",
+      "rawFile": "raw/search-openalex-006-swinging-counterweight-trebuchet-scaling-optimization.txt",
+      "records": 2
+    },
+    {
+      "source": "crossref",
+      "query": "swinging counterweight trebuchet scaling optimization",
+      "rawFile": "raw/search-crossref-006-swinging-counterweight-trebuchet-scaling-optimization.txt",
+      "records": 8
+    }
+  ],
+  "result_count": 90,
+  "budget": {
+    "depth": "standard",
+    "max_query_variants": 10,
+    "max_sources": 5,
+    "max_api_calls": 50,
+    "low_yield_threshold": 2,
+    "saturation_queries": 3,
+    "max_consecutive_errors": 5
+  },
+  "stop_reason": "completed",
+  "requests_used": 12,
+  "coverage": {
+    "unique_records": 62,
+    "queries": [
+      {
+        "query": "Trebuchet Mechanics Siano",
+        "new_unique": 16,
+        "complete": true
+      },
+      {
+        "query": "Siege engine dynamics Denny",
+        "new_unique": 14,
+        "complete": true
+      },
+      {
+        "query": "hinged counterweight trebuchet equations motion",
+        "new_unique": 10,
+        "complete": true
+      },
+      {
+        "query": "sling release trebuchet pin angle",
+        "new_unique": 10,
+        "complete": true
+      },
+      {
+        "query": "experimental trebuchet range efficiency measurements",
+        "new_unique": 9,
+        "complete": true
+      },
+      {
+        "query": "swinging counterweight trebuchet scaling optimization",
+        "new_unique": 3,
+        "complete": true
+      }
+    ],
+    "consecutive_low_yield": 0
+  },
+  "consecutive_errors": 0
+}

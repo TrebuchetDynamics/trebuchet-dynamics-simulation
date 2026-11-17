@@ -1,0 +1,68 @@
+{
+  "budget": {
+    "depth": "standard",
+    "max_query_variants": 10,
+    "max_sources": 5,
+    "max_api_calls": 50,
+    "low_yield_threshold": 2,
+    "saturation_queries": 3,
+    "max_consecutive_errors": 5
+  },
+  "stop_reason": "completed",
+  "requests_used": 12,
+  "coverage": {
+    "unique_records": 62,
+    "queries": [
+      {
+        "query": "Trebuchet Mechanics Siano",
+        "new_unique": 16,
+        "complete": true
+      },
+      {
+        "query": "Siege engine dynamics Denny",
+        "new_unique": 14,
+        "complete": true
+      },
+      {
+        "query": "hinged counterweight trebuchet equations motion",
+        "new_unique": 10,
+        "complete": true
+      },
+      {
+        "query": "sling release trebuchet pin angle",
+        "new_unique": 10,
+        "complete": true
+      },
+      {
+        "query": "experimental trebuchet range efficiency measurements",
+        "new_unique": 9,
+        "complete": true
+      },
+      {
+        "query": "swinging counterweight trebuchet scaling optimization",
+        "new_unique": 3,
+        "complete": true
+      }
+    ],
+    "consecutive_low_yield": 0
+  },
+  "consecutive_errors": 0,
+  "schemaVersion": "1",
+  "createdAt": "2026-11-17T00:47:56Z",
+  "queries": [
+    "Trebuchet Mechanics Siano",
+    "Siege engine dynamics Denny",
+    "hinged counterweight trebuchet equations motion",
+    "sling release trebuchet pin angle",
+    "experimental trebuchet range efficiency measurements",
+    "swinging counterweight trebuchet scaling optimization"
+  ],
+  "sources": [
+    "openalex",
+    "crossref"
+  ],
+  "limit": 8,
+  "results": 90,
+  "deduped": 62,
+  "failures": 0
+}
