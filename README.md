@@ -9,7 +9,7 @@ available in Git history at commit `088c2e958f4231d5ef4b398c3e479c72f9b529d5`.
 
 ## Requirements
 
-- Node.js `^20.19.0` or `>=22.12.0` (the range Vite 8 supports)
+- Node.js `^22.12.0`, `^24.0.0` or `>=26.0.0` (supported by both Vite and Vitest)
 - npm (the committed `package-lock.json` is what `npm ci` installs)
 
 ## Commands
