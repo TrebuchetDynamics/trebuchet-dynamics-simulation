@@ -7,4 +7,5 @@ import { mountWidget } from './ui/app'
 for (const [name, value] of Object.entries(theme)) {
   document.documentElement.style.setProperty(`--${name}`, value)
 }
-mountWidget(document.querySelector<HTMLElement>('#app')!)
+const embed = new URLSearchParams(location.search).get('embed') === '1'
+mountWidget(document.querySelector<HTMLElement>('#app')!, embed)
