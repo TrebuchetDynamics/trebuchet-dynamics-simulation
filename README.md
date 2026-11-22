@@ -65,6 +65,46 @@ Confirm the simulator loads in an iframe on the landing page. If the custom host
 Cloudflare error **522**, ensure it has been added to the project's **Custom domains** and complete
 its DNS validation; a CNAME alone without the Pages association is insufficient.
 
+## Android
+
+The committed `android/` project uses [Capacitor 8](https://capacitorjs.com/docs/android).
+Install the Node.js/npm versions above, **JDK 21** (JDK 17 is not sufficient), and the
+**Android SDK with Android 16 / API 36 and SDK Build-Tools**. Android Studio
+Otter (2025.2.1) or newer can install the SDK through SDK Manager. Set `JAVA_HOME`
+to JDK 21 and `ANDROID_HOME` to your SDK directory when building from a terminal.
+Capacitor's Android module compiles with Java 21; see also the
+[Capacitor environment setup](https://capacitorjs.com/docs/getting-started/environment-setup).
+
+```sh
+npm ci
+npm run android:sync         # builds dist/ and copies it into the Android project
+cd android
+./gradlew assembleDebug      # on Windows: gradlew.bat assembleDebug
+```
+
+The APK is `android/app/build/outputs/apk/debug/app-debug.apk` (from the repository
+root). The first build needs internet to download npm/Gradle/Android dependencies;
+the installed app does not. After web changes, rerun `npm run android:sync` from the
+repository root before building again. To use Android Studio, run `npx cap open android`
+from the root after syncing, then select a device/emulator and Run.
+
+If Gradle reports **SDK location not found**, set `ANDROID_HOME` to the installed SDK
+(or configure the SDK in Android Studio) and rerun `./gradlew assembleDebug`. For
+**invalid source release: 21**, set `JAVA_HOME` / Android Studio's Gradle JDK to JDK 21.
+Keep `local.properties`, build outputs and signing keys out of Git; no release signing
+is configured.
+
+The app id is `com.trebuchetdynamics.simulation`, named **Trebuchet Simulation**.
+It loads bundled assets from `dist/`, with no remote server or `embed` parameter,
+so it opens the full simulator, including local fonts, and permits either orientation.
+Launcher icons and splash images use the resting-trebuchet image (`image3425`)
+embedded in `public/trebuchet.svg`, centered on `#0a0a0f`; Android 12+ uses the
+launcher icon on the same splash background. No extra Capacitor plugins are installed.
+
+Manual device check (not covered by browser tests): install the debug APK, enable
+airplane mode, cold-start the app and launch a shot. The full controls and shot
+telemetry should work without a network connection.
+
 ## Layout
 
 ```
