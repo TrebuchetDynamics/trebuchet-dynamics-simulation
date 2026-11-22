@@ -3,7 +3,7 @@ import { text } from './strings'
 
 type Field = keyof typeof PARAMETERS
 
-export function createControls(root: HTMLElement, onPreset: (name: 'small' | 'medium' | 'large') => void, onChange: (field: Field, value: number) => void) {
+export function createControls(root: HTMLElement, onPreset: (name: 'small' | 'medium' | 'large') => void, onChange: (field: Field, value: number) => void, embed = false) {
   const inputs = new Map<Field, HTMLInputElement>()
   const values = new Map<Field, HTMLOutputElement>()
   const errors = new Map<Field, HTMLElement>()
@@ -33,13 +33,16 @@ export function createControls(root: HTMLElement, onPreset: (name: 'small' | 'me
   const summary = document.createElement('summary')
   summary.textContent = text('advanced')
   advanced.append(summary)
-  root.append(main, wind, advanced)
+  root.append(main, wind)
+  if (!embed) root.append(advanced)
   const help = document.createElement('p')
   help.textContent = text('windHelp')
   wind.append(help)
 
   for (const field of Object.keys(PARAMETERS) as Field[]) {
     const parameter = PARAMETERS[field]
+    const isWind = field === 'windSpeed' || field === 'windDirectionDeg'
+    if (embed && parameter.level === 'advanced' && !isWind) continue
     const row = document.createElement('div')
     row.className = 'control'
     const label = document.createElement('label')
@@ -69,6 +72,10 @@ export function createControls(root: HTMLElement, onPreset: (name: 'small' | 'me
     errors.set(field, error)
   }
   return {
+    lockWind(locked: boolean) {
+      inputs.get('windSpeed')!.disabled = locked
+      inputs.get('windDirectionDeg')!.disabled = locked
+    },
     update(current: Record<Field, number>, issues: { field: string; code: string }[], preset?: string) {
       for (const [field, input] of inputs) {
         input.value = String(current[field])

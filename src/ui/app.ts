@@ -1,16 +1,31 @@
 import { createScene } from '../scene'
+import { CHALLENGES, evaluateShot } from '../game/challenge'
+import { loadState, saveState } from '../game/storage'
 import { PARAMETERS, PRESETS, validateDesign, type Design, type Environment } from '../sim/design'
 import { simulateShot, type ShotResult } from '../sim/shot'
 import { createControls } from './controls'
 import { text } from './strings'
 
-export function mountWidget(root: HTMLElement): void {
+export function mountWidget(root: HTMLElement, embed = false): void {
   document.title = text('title')
   root.innerHTML = `
     <header><h1>${text('title')}</h1><p>${text('subtitle')}</p></header>
     <div class="workspace">
-      <section class="viewport"><canvas id="scene" aria-label="${text('canvas')}"></canvas><p class="target">${text('target')}</p></section>
+      <section class="viewport"><canvas id="scene" aria-label="${text('canvas')}"></canvas><p class="target" id="target-label">${text('target')}</p></section>
       <section class="panel" aria-label="${text('controls')}">
+        ${embed ? `<a id="open-full" target="_blank" rel="noopener">${text('openFull')}</a>` : `
+        <section aria-labelledby="challenge-title">
+          <h2 id="challenge-title">${text('challenges')}</h2>
+          <label><input id="free-play" type="checkbox"> ${text('freePlay')}</label>
+          <p>${text('challengeHelp')}</p>
+          <p>${text('highScore')}: <span data-testid="high-score" id="high-score"></span></p>
+          <div id="challenge-progress">
+            <dl><dt>${text('score')}</dt><dd data-testid="score" id="score"></dd><dt>${text('attempts')}</dt><dd data-testid="attempts" id="attempts"></dd></dl>
+            <p id="fixed-wind" hidden>${text('fixedWind')}</p>
+            <p id="challenge-result" role="status" aria-live="polite"></p>
+            <button id="next-target" type="button" hidden>${text('nextTarget')}</button>
+          </div>
+        </section>`}
         <div id="controls"></div>
         <div class="actions"><button id="launch" type="button">${text('launch')}</button><button id="replay" type="button" disabled>${text('replay')}</button></div>
         <p id="status" role="status" aria-live="polite"></p>
@@ -20,6 +35,11 @@ export function mountWidget(root: HTMLElement): void {
       </section>
     </div>`
   const get = <T extends HTMLElement>(id: string) => root.querySelector<T>(`#${id}`)!
+  if (embed) {
+    const fullPage = new URL(location.href)
+    fullPage.searchParams.delete('embed')
+    get<HTMLAnchorElement>('open-full').href = fullPage.href
+  }
   const status = get('status'), launch = get<HTMLButtonElement>('launch'), replay = get<HTMLButtonElement>('replay')
   const energyBar = root.querySelector<HTMLElement>('.energy-bar')!
   const metrics = new Map<string, HTMLElement>()
@@ -47,11 +67,35 @@ export function mountWidget(root: HTMLElement): void {
     launch.disabled = true
     return
   }
-  let design: Design = { ...PRESETS.medium }
+  const saved = embed ? { highScore: 0, design: { ...PRESETS.medium } } : loadState()
+  let design: Design = saved.design
+  let highScore = saved.highScore
+  let score = 0, targetIndex = 0, attempts = 0
+  let freePlay = false, solved = false
   let environment: Environment = { windSpeed: 0, windDirectionDeg: 0, airDensity: 1.225 }
   let prediction: ShotResult | null = null
   let revision = 0
-  let activePreset: string | undefined = 'medium'
+  let activePreset: string | undefined = embed ? 'medium' : undefined
+
+  function persist(): void {
+    if (!embed) saveState({ highScore, design })
+  }
+
+  function updateChallenge(): void {
+    if (embed) return
+    const target = freePlay ? { distance: 100, lateral: 0, radius: 5 } : CHALLENGES[targetIndex]
+    scene.setTargets([target])
+    get('target-label').textContent = freePlay ? text('target') :
+      `${text('targetLabel')} ${targetIndex + 1}/${CHALLENGES.length}: ${target.distance} m, ${text('lateralLabel')} ${target.lateral} m, ${text('radiusLabel')} ${target.radius} m`
+    get('high-score').textContent = highScore.toFixed(1)
+    get('score').textContent = score.toFixed(1)
+    get('attempts').textContent = String(attempts)
+    get('challenge-progress').hidden = freePlay
+    get('next-target').hidden = !solved
+    get('next-target').textContent = text(targetIndex === CHALLENGES.length - 1 ? 'restartChallenges' : 'nextTarget')
+    get('fixed-wind').hidden = !target.wind
+    controls.lockWind(!freePlay && Boolean(target.wind))
+  }
 
   function resolvedValues(): Record<keyof typeof PARAMETERS, number> {
     return {
@@ -74,7 +118,28 @@ export function mountWidget(root: HTMLElement): void {
     else design = { ...design, [field]: value }
     activePreset = undefined
     update()
-  })
+  }, embed)
+
+  if (!embed) {
+    get<HTMLInputElement>('free-play').addEventListener('change', event => {
+      freePlay = (event.target as HTMLInputElement).checked
+      if (!freePlay && CHALLENGES[targetIndex].wind) environment = { ...environment, ...CHALLENGES[targetIndex].wind }
+      updateChallenge()
+      update()
+    })
+    get('next-target').addEventListener('click', () => {
+      if (!solved) return
+      if (targetIndex === CHALLENGES.length - 1) { targetIndex = 0; score = 0 }
+      else targetIndex++
+      attempts = 0
+      solved = false
+      environment = { ...environment, windSpeed: 0, windDirectionDeg: 0, ...CHALLENGES[targetIndex].wind }
+      get('challenge-result').textContent = ''
+      updateChallenge()
+      update()
+    })
+    updateChallenge()
+  }
 
   function clearMeasured(): void {
     for (const [key, value] of metrics) if (key !== 'predictedRange') value.textContent = text('pending')
@@ -98,6 +163,7 @@ export function mountWidget(root: HTMLElement): void {
       status.textContent = text('invalid')
       return
     }
+    persist()
     try {
       prediction = simulateShot(design, environment)
       scene.setDesign(design)
@@ -109,7 +175,7 @@ export function mountWidget(root: HTMLElement): void {
         item.className = message.severity
         get('messages').append(item)
       }
-      launch.disabled = !prediction.flight
+      launch.disabled = !prediction.flight || (!embed && !freePlay && solved)
       status.textContent = text(prediction.flight ? 'ready' : 'unplayable')
     } catch {
       prediction = null
@@ -139,10 +205,14 @@ export function mountWidget(root: HTMLElement): void {
     }
   }
 
-  async function play(timeScale: number): Promise<void> {
+  async function play(timeScale: number, isReplay = false): Promise<void> {
     const shot = prediction
-    if (!shot?.flight) return
+    if (!shot?.flight || (!isReplay && !embed && !freePlay && solved)) return
     const playingRevision = revision
+    if (!isReplay && !embed && !freePlay) {
+      attempts++
+      updateChallenge()
+    }
     launch.disabled = true
     replay.disabled = true
     clearMeasured()
@@ -153,7 +223,24 @@ export function mountWidget(root: HTMLElement): void {
       if (playingRevision !== revision) return
       showResult(shot)
       status.textContent = text('complete')
-      launch.disabled = false
+      if (!isReplay && !embed && !freePlay) {
+        const result = evaluateShot(shot, CHALLENGES[targetIndex], attempts)!
+        if (result.hit) {
+          solved = true
+          score += result.points
+          highScore = Math.max(highScore, score)
+          persist()
+          get('challenge-result').textContent = `${text('hit')} +${result.points.toFixed(1)} ${text('points')}${targetIndex === CHALLENGES.length - 1 ? ` — ${text('challengeComplete')}` : ''}`
+        } else {
+          const directions = [
+            result.forward ? `${Math.abs(result.forward).toFixed(1)} m ${text(result.forward < 0 ? 'short' : 'long')}` : '',
+            result.lateral ? `${Math.abs(result.lateral).toFixed(1)} m ${text(result.lateral < 0 ? 'left' : 'right')}` : '',
+          ].filter(Boolean).join(', ')
+          get('challenge-result').textContent = `${text('miss')} ${result.distance.toFixed(1)} ${text('fromCentre')} (${directions})`
+        }
+        updateChallenge()
+      }
+      launch.disabled = !embed && !freePlay && solved
       replay.disabled = false
       if (window.matchMedia('(max-width: 1023px)').matches) get('telemetry-title').scrollIntoView({ block: 'start' })
     } catch {
@@ -163,6 +250,6 @@ export function mountWidget(root: HTMLElement): void {
     }
   }
   launch.addEventListener('click', () => { void play(1) })
-  replay.addEventListener('click', () => { void play(0.25) })
+  replay.addEventListener('click', () => { void play(0.25, true) })
   update()
 }
