@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name trebuchet-simulator --branch main",
     "check:size": "node scripts/check-bundle-size.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -22,6 +23,7 @@
     "@types/three": "^0.187.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.163.0"
   }
 }
