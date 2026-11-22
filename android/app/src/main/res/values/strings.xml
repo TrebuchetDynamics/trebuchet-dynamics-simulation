@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Trebuchet Simulation</string>
+    <string name="title_activity_main">Trebuchet Simulation</string>
+    <string name="package_name">com.trebuchetdynamics.simulation</string>
+    <string name="custom_url_scheme">com.trebuchetdynamics.simulation</string>
+</resources>

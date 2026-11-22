@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "android:sync": "npm run build && npx cap sync android",
     "deploy": "npm run build && wrangler pages deploy dist --project-name trebuchet-simulator --branch main",
     "check:size": "node scripts/check-bundle-size.mjs",
     "preview": "vite preview",
@@ -14,11 +15,14 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@playwright/test": "^1.65.1",
     "@types/three": "^0.187.0",
     "typescript": "^5.9.3",
