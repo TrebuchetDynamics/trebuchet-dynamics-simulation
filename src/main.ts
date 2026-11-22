@@ -1,12 +1,10 @@
-import { createScene } from './scene'
-import { PRESETS } from './sim/design'
+import '@fontsource-variable/space-grotesk'
+import '@fontsource-variable/jetbrains-mono'
+import './style.css'
 import { theme } from './theme'
+import { mountWidget } from './ui/app'
 
-const canvas = document.querySelector<HTMLCanvasElement>('#scene')
-if (canvas === null) {
-  throw new Error('Missing <canvas id="scene"> in index.html')
+for (const [name, value] of Object.entries(theme)) {
+  document.documentElement.style.setProperty(`--${name}`, value)
 }
-
-document.body.style.background = theme.background
-export const scene = createScene(canvas)
-scene.setDesign(PRESETS.medium)
+mountWidget(document.querySelector<HTMLElement>('#app')!)
